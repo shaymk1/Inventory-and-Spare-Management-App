@@ -229,7 +229,8 @@ Data Layer (SQLite + local files)
 
 - Create a requirements.txt file:
 
-  - customtkinter
+  - customtkinter>=5.2.0
+  - pillow>=10.0.0
 
 - Install dependencies:
 
