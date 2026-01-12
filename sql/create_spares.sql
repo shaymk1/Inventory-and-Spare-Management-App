@@ -1,0 +1,12 @@
+
+CREATE TABLE IF NOT EXISTS spares(
+id INT AUTOINCREMENT PRIMARY KEY,
+name TEXT NOT NULL,
+code TEXT NOT NULL UNIQUE,
+quantity INT NOT NULL DEFAULT 0,
+low_stock_threshold INT NOT NULL DEFAULT 5,
+is_active INT NOT NULLDEFAULT 1,
+image_path TEXT,
+);
+
+
