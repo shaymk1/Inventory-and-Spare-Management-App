@@ -185,6 +185,12 @@ Data Layer (SQLite + local files)
   
 ## 🛠️ Setup Instructions (Step by Step)
 
+### Python Version
+
+This project is developed and tested with **Python 3.12**.
+
+⚠️ Python 3.13 is not recommended YET due to instability with `venv` on Windows.
+
 - These steps are for development and local testing.
 - The final app will later be packaged into a standalone executable.
 
