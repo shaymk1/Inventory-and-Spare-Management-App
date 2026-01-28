@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Insert real users
 INSERT OR IGNORE INTO users (username, password_hash, full_name, is_developer) VALUES
-    -- Developer (you) - emergency only
-    ('dev_admin', '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08', 'System Developer', 1),
+    -- Developer (simple password)
+    ('dev_admin', 'dev123', 'Developer Admin', 1),
     
-    -- Store Manager (daily user)
-    ('store_manager', 'd1b1294f6b0b7c7c5e5c5c5a5b5c5d5e5f5a5b5c5d5e5f5a5b5c5d5e5f5a5b5c5d', 'Barend', 0),
+    -- Store Manager (simple password)  
+    ('store_manager', 'store123', 'Store Manager', 0),
     
-    -- Boss (backup when store manager is off)
-    ('boss_backup', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2', 'Attie', 0);
+    -- Boss (simple password)
+    ('boss_backup', 'boss123', 'Backup Supervisor', 0);
