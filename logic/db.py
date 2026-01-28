@@ -36,12 +36,14 @@ class Database:
             try:
                 conn = self.get_connection()
                 cursor = conn.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                cursor.execute("SELECT  FROM sqlite_master WHERE type='table'")
                 tables = cursor.fetchall()
                 conn.close()
-                
+
                 if len(tables) == 0:
-                    print("📦 Database file exists but has no tables. Creating tables...")
+                    print(
+                        "📦 Database file exists but has no tables. Creating tables..."
+                    )
                     self._create_tables()
                 else:
                     print(f"✅ Database ready with {len(tables)} tables")
@@ -121,11 +123,12 @@ class Database:
         """Get all spare parts"""
         return self.execute("SELECT * FROM spares ORDER BY code", fetch=True)
 
+    
     def add_spare(self, code, name, quantity=0, low_threshold=5):
         """Add a new spare part"""
         return self.execute(
             "INSERT INTO spares (code, name, quantity, low_stock_threshold) VALUES (?, ?, ?, ?)",
-            (code, name, quantity, low_threshold),
+            (code, name, quantity, low_threshold),  
         )
 
     def borrow_spare(self, spare_id, user_name, quantity, notes=""):
@@ -139,7 +142,7 @@ class Database:
             # Create new user
             self.execute("INSERT INTO users (name) VALUES (?)", (user_name,))
             user = self.execute(
-                "SELECT id FROM users WHERE name = ?", (user_name,), fetch=True
+                "SELECT id FROM users WHERE username = ?", (user_name,), fetch=True
             )
 
         user_id = user[0]["id"]
