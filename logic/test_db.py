@@ -1,16 +1,9 @@
 # test_setup.py
 # logic/test_db.py
-import sys
-import os
-from pathlib import Path
-
-# Add parent directory to path so we can import from logic
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from logic.db import db
-
-# i needed to add the path first before the import,
-# so i will ignore the flake 8 warning about imports needing to be on top
+"""
+Test database functionality
+"""
+from .db import db
 
 
 def test_database():
@@ -51,7 +44,7 @@ def test_database():
     spares = db.get_all_spares()
     print(f"   Found {len(spares)} spares:")
     for spare in spares[:5]:  # Show first 5
-        print(f"   - {spare['code']}: {spare['name']} (Qty: {spare['quantity']})")
+        print(f"- {spare['code']}: {spare['name']} (Qty: {spare['quantity']})")
 
     if len(spares) > 5:
         print(f"   ... and {len(spares) - 5} more")

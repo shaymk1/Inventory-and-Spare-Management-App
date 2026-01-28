@@ -23,11 +23,32 @@ class Database:
         # Initialize on first use
         self._setup_database()
 
+    # setup database method:
+
     def _setup_database(self):
         """Create database and tables if they don't exist"""
+        # Check if database file exists AND has tables
         if not self.db_path.exists():
             print("📦 Creating new database...")
             self._create_tables()
+        else:
+            # Check if tables exist in the file
+            try:
+                conn = self.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = cursor.fetchall()
+                conn.close()
+                
+                if len(tables) == 0:
+                    print("📦 Database file exists but has no tables. Creating tables...")
+                    self._create_tables()
+                else:
+                    print(f"✅ Database ready with {len(tables)} tables")
+            except sqlite3.Error as e:
+                # If any error, recreate tables
+                print("⚠️  Database file may be corrupt. Recreating tables...")
+                self._create_tables()
 
     def _create_tables(self):
         """Read and execute all SQL files from sql/ folder"""
