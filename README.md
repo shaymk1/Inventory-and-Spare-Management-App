@@ -64,13 +64,10 @@ This project exists to solve a real workshop problem:
 
 inventory_app/
 │
-├── main.py                # App entry point
-├── db.py                  # SQLite connection & queries
-├── auth.py                # Login & user roles
-├── inventory.py           # Spare CRUD logic
-├── movements.py           # Borrow / return logic
-├── email_alerts.py        # Low stock email logic
-├── backup.py              # Backup & restore logic
+├── sql/
+│   ├── create_movements.sql
+│   ├── create_spares.sql
+│   ├── create_users.sql
 │
 ├── ui/
 │   ├── login.py
@@ -84,7 +81,21 @@ inventory_app/
 │   ├── images/            # Spare images
 │   └── backups/           # Timestamped backups
 │
+│
+├── logic/
+│   ├── auth.py
+│   ├── backup.py
+│   └── db.py
+│   ├── email_alerts.py
+│   ├── main.py
+│   └── movements.py
+│   ├── test_db.py
+│   └── utils.py
+│
 └── requirements.txt
+└── app.py                #entry point of the app
+└── run_test.py           #test script
+└── readme.md
 
 ## Application Architecture
 
@@ -256,7 +267,7 @@ This project is developed and tested with **Python 3.12**.
 ├── email_alerts.py
 ├── backup.py
 │
-├── ui/
+├── UI/
 │   ├── login.py
 │   ├── dashboard.py
 │   ├── spare_form.py

@@ -1,4 +1,4 @@
-# gui/login_window.py
+# ui/login.py
 """
 Login screen for Spare Manager
 """
