@@ -2,8 +2,19 @@
 Main dashboard with navigation
 """
 
+import tkinter
 import customtkinter as ctk
 from logic.db import db
+
+#  imports for image handling
+try:
+    from PIL import Image, UnidentifiedImageError
+
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    print("⚠️ PIL not installed. Using text logos.")
+import os
 
 
 class ScrollableFrame(ctk.CTkScrollableFrame):
@@ -24,6 +35,9 @@ class Dashboard(ctk.CTkToplevel):
         self.title(f"Spare Manager - {user_info['full_name']}")
         self.state("zoomed")
 
+        # Set protocol for window close
+        self.protocol("WM_DELETE_WINDOW", self.cleanup_and_exit)
+
         # Center window
         self.update_idletasks()
         width = self.winfo_width()
@@ -43,7 +57,7 @@ class Dashboard(ctk.CTkToplevel):
         self.protocol("WM_DELETE_WINDOW", self.logout)
 
         # Load initial dashboard view
-        self.show_dashboard()
+        self.launch_dashboard()
 
     def _create_sidebar(self):
         """Create navigation sidebar with scrollbar"""
@@ -86,14 +100,51 @@ class Dashboard(ctk.CTkToplevel):
         scrollable_frame = ScrollableFrame(
             self.sidebar,
             width=220,
-            height=400,  # Fixed height to enable scrolling
+            # height=400,  # Fixed height to enable scrolling
             fg_color="transparent",
         )
         scrollable_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
+        # ===== LOGO IN SIDEBAR =====
+        logo_container = ctk.CTkFrame(scrollable_frame, fg_color="transparent")
+        logo_container.pack(pady=(0, 15))
+
+        try:
+            if PIL_AVAILABLE:
+                logo_path = "assets/logo.png"
+                if os.path.exists(logo_path):
+                    logo_img = Image.open(logo_path)
+                    logo_image = ctk.CTkImage(
+                        light_image=logo_img, dark_image=logo_img, size=(40, 40)
+                    )
+                    ctk.CTkLabel(logo_container, image=logo_image, text="").pack()
+                else:
+                    raise FileNotFoundError("Logo file not found")
+            else:
+                raise ImportError("PIL not available")
+
+        except (FileNotFoundError, UnidentifiedImageError, OSError):
+            # Image file issues
+            ctk.CTkLabel(logo_container, text="🔧", font=("Arial", 28)).pack()
+        except ImportError:
+            # PIL not installed
+            ctk.CTkLabel(logo_container, text="[LOGO]", font=("Arial", 20)).pack()
+
+        except Exception as e:
+            # Any other error
+            print(f"⚠️ Logo error: {e}")
+            ctk.CTkLabel(logo_container, text="📦", font=("Arial", 28)).pack()
+        # App name text (always show this)
+        ctk.CTkLabel(
+            logo_container,
+            text="SPARE MANAGER",
+            font=("Arial", 12, "bold"),
+            text_color="#4FC3F7",
+        ).pack(pady=(5, 0))
+
         # Navigation buttons in scrollable area
         nav_buttons = [
-            ("📊 Dashboard", self.show_dashboard),
+            ("📊 Dashboard", self.launch_dashboard),
             ("📦 Manage Spares", self.show_spares),
             ("⬇️ Borrow Items", self.show_borrow),
             ("⬆️ Return Items", self.show_return),
@@ -203,117 +254,120 @@ class Dashboard(ctk.CTkToplevel):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
-    def show_dashboard(self):
-        """Show dashboard overview"""
+    def launch_dashboard(self):
+        """
+        Shows the dashboard CONTENT (stats, overview).
+        Called when user clicks "Dashboard" in sidebar.
+        """
         self.view_title.configure(text="📊 Dashboard")
         self._clear_content()
 
         # Dashboard content
+        stats_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        stats_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # ===== LOGO IN MAIN DASHBOARD =====
+        row_start = 0
+
         try:
-            from logic.db import db
+            if PIL_AVAILABLE:
+                logo_path = "assets/logo.png"
+                if os.path.exists(logo_path):
+                    logo_img = Image.open(logo_path)
+                    logo_image = ctk.CTkImage(
+                        light_image=logo_img, dark_image=logo_img, size=(70, 70)
+                    )
+                    logo_container = ctk.CTkFrame(stats_frame, fg_color="transparent")
+                    logo_container.grid(row=0, column=0, columnspan=2, pady=(0, 30))
 
-            # Get stats
-            spares = db.execute("SELECT COUNT(*) as count FROM spares", fetch=True)
-            total_items = db.execute(
-                "SELECT SUM(quantity) as total FROM spares", fetch=True
+                    ctk.CTkLabel(logo_container, image=logo_image, text="").pack()
+                    row_start = 1
+                else:
+                    raise FileNotFoundError("Logo file not found")
+        except (FileNotFoundError, UnidentifiedImageError, OSError, ImportError):
+            # No logo, stats start at row 0
+            row_start = 0
+        except Exception as e:
+            print(f"⚠️ Dashboard logo error: {e}")
+            row_start = 0
+
+        # Get stats from database
+        try:
+            # from logic.db import db
+
+            # Query 1: Count active spares
+            spares_result = db.execute(
+                "SELECT COUNT(*) as count FROM spares WHERE is_active = 1", fetch=True
             )
-            low_stock = db.execute(
-                "SELECT COUNT(*) as count FROM spares WHERE quantity <= low_stock_threshold",
+            spares_count = spares_result[0]["count"] if spares_result else 0
+
+            # Query 2: Total quantity of all spares
+            total_result = db.execute(
+                "SELECT SUM(quantity) as total FROM spares WHERE is_active = 1",
                 fetch=True,
             )
-            recent_movements = db.execute(
-                "SELECT COUNT(*) as count FROM movements WHERE date(datetime) = date('now')",
-                fetch=True,
+            total_items = (
+                total_result[0]["total"]
+                if total_result and total_result[0]["total"]
+                else 0
             )
 
-            # Stats grid
-            stats_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-            stats_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            # Query 3: Low stock items (using low_stock_threshold)
+            low_stock_result = db.execute(
+                "SELECT COUNT(*) as count FROM spares WHERE quantity <= low_stock_threshold AND is_active = 1",
+                fetch=True,
+            )
+            low_stock_count = low_stock_result[0]["count"] if low_stock_result else 0
 
-            stats = [
-                ("📦", "Total Spares", f"{spares[0]['count'] if spares else 0}"),
-                (
-                    "🔢",
-                    "Total Items",
-                    f"{total_items[0]['total'] if total_items[0]['total'] else 0}",
-                ),
-                (
-                    "⚠️",
-                    "Low Stock Items",
-                    f"{low_stock[0]['count'] if low_stock else 0}",
-                ),
-                (
-                    "📝",
-                    "Today's Movements",
-                    f"{recent_movements[0]['count'] if recent_movements else 0}",
-                ),
-            ]
-
-            # Create stat cards
-            for i, (icon, label, value) in enumerate(stats):
-                card = ctk.CTkFrame(
-                    stats_frame,
-                    width=200,
-                    height=120,
-                    corner_radius=15,
-                    border_width=2,
-                    border_color="#3a3a3a",
-                )
-                card.grid(row=i // 2, column=i % 2, padx=15, pady=15, sticky="nsew")
-
-                # Icon
-                ctk.CTkLabel(card, text=icon, font=("Arial", 24)).pack(pady=(20, 10))
-                # Label
-                ctk.CTkLabel(
-                    card, text=label, font=("Arial", 12), text_color="gray"
-                ).pack()
-                # Value
-                ctk.CTkLabel(card, text=value, font=("Arial", 20, "bold")).pack(pady=5)
-
-            # Configure grid
-            for i in range(2):
-                stats_frame.grid_columnconfigure(i, weight=1)
-            for i in range(2):
-                stats_frame.grid_rowconfigure(i, weight=1)
-
-            # Quick actions
-            actions_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-            actions_frame.pack(fill="x", padx=20, pady=(20, 10))
-
-            ctk.CTkLabel(
-                actions_frame, text="🚀 Quick Actions", font=("Arial", 16, "bold")
-            ).pack(anchor="w", pady=(0, 15))
-
-            # Quick action buttons
-            quick_actions = [
-                ("➕ Add New Spare", self.show_spares),
-                ("⬇️ Quick Borrow", self.show_borrow),
-                ("📜 View Today's Log", self.show_history),
-            ]
-
-            actions_btn_frame = ctk.CTkFrame(actions_frame, fg_color="transparent")
-            actions_btn_frame.pack(fill="x")
-
-            for text, command in quick_actions:
-                btn = ctk.CTkButton(
-                    actions_btn_frame,
-                    text=text,
-                    command=command,
-                    width=180,
-                    height=40,
-                    font=("Arial", 13),
-                )
-                btn.pack(side="left", padx=5)
+            # Query 4: Today's movements (using movement_date)
+            movements_result = db.execute(
+                "SELECT COUNT(*) as count FROM movements WHERE date(movement_date) = date('now')",
+                fetch=True,
+            )
+            movements_count = movements_result[0]["count"] if movements_result else 0
 
         except Exception as e:
-            # If database query fails, show error
-            error_label = ctk.CTkLabel(
-                self.content_frame,
-                text=f"⚠️ Could not load dashboard data:\n{str(e)}",
-                font=("Arial", 14),
-                text_color="orange",
+            print(f"Database error: {e}")
+            # Use default values if queries fail
+            spares_count = 0
+            total_items = 0
+            low_stock_count = 0
+            movements_count = 0
+
+        # Display stats
+        stats = [
+            ("📦", "Active Spares", str(spares_count)),
+            ("🔢", "Total Items", str(total_items)),
+            ("⚠️", "Low Stock Items", str(low_stock_count)),
+            ("📝", "Today's Movements", str(movements_count)),
+        ]
+
+        # Create stat cards
+        for i, (icon, label, value) in enumerate(stats):
+            card = ctk.CTkFrame(
+                stats_frame,
+                width=200,
+                height=120,
+                corner_radius=15,
+                border_width=2,
+                border_color="#3a3a3a",
             )
-            error_label.pack(pady=100)
+            card.grid(
+                row=row_start + (i // 2), column=i % 2, padx=15, pady=15, sticky="nsew"
+            )
+
+            # Icon
+            ctk.CTkLabel(card, text=icon, font=("Arial", 24)).pack(pady=(20, 10))
+            # Label
+            ctk.CTkLabel(card, text=label, font=("Arial", 12), text_color="gray").pack()
+            # Value
+            ctk.CTkLabel(card, text=value, font=("Arial", 20, "bold")).pack(pady=5)
+
+        # Configure grid
+        for i in range(2):
+            stats_frame.grid_columnconfigure(i, weight=1)
+        for i in range(2):
+            stats_frame.grid_rowconfigure(i, weight=1)
 
     def show_spares(self):
         """Show spare management interface"""
@@ -721,408 +775,39 @@ class Dashboard(ctk.CTkToplevel):
         print("Return functionality to be implemented")
 
     def logout(self):
-        """Logout and return to login"""
-        print("Logging out...")
-        self.destroy()
+        """Clean logout without Tkinter errors"""
+        print("🔄 Logging out...")
 
+        # Cancel all pending after() events
+        try:
+            # Get all pending after events
+            after_ids = self.tk.eval("after info").split()
+            for after_id in after_ids:
+                try:
+                    self.after_cancel(after_id)
+                except (ValueError, tkinter.TclError):
+                    pass  # after_id might be invalid already
+        except (AttributeError, tkinter.TclError):
+            pass  # No after events or tk not available
 
-# """
-# Main dashboard with navigation
-# """
+        # Unbind any global events
+        try:
+            self.unbind_all("<Key>")
+            self.unbind_all("<Button>")
+        except (AttributeError, tkinter.TclError):
+            pass
 
-# import customtkinter as ctk
-# from logic.db import db
+        # Destroy window
+        try:
+            self.destroy()
+        except (AttributeError, tkinter.TclError):
+            pass
 
+        # Force exit the app completely
+        import sys
 
-# class Dashboard(ctk.CTkToplevel):
-#     def __init__(self, user_info, parent_app):
-#         super().__init__()
-#         self.user_info = user_info
-#         self.parent_app = parent_app
+        sys.exit(0)
 
-#         # Window setup
-#         self.title(f"Spare Manager - {user_info['full_name']}")
-#         self.state("zoomed")
-
-#         # Center window
-#         self.update_idletasks()
-#         width = self.winfo_width()
-#         height = self.winfo_height()
-#         x = (self.winfo_screenwidth() // 2) - (width // 2)
-#         y = (self.winfo_screenheight() // 2) - (height // 2)
-#         self.geometry(f"{width}x{height}+{x}+{y}")
-
-#         # Configure grid
-#         self.grid_columnconfigure(1, weight=1)
-#         self.grid_rowconfigure(0, weight=1)
-
-#         self._create_sidebar()
-#         self._create_main_frame()
-
-#         # Bind close event
-#         self.protocol("WM_DELETE_WINDOW", self.logout)
-
-#         # Load initial dashboard view
-#         self.show_dashboard()
-
-#     def _create_sidebar(self):
-#         """Create navigation sidebar"""
-#         self.sidebar = ctk.CTkFrame(
-#             self, width=220, corner_radius=0, fg_color="#2b2b2b"
-#         )
-#         self.sidebar.grid(row=0, column=0, sticky="nsew")
-#         self.sidebar.grid_propagate(False)
-
-#         # Welcome user
-#         welcome_label = ctk.CTkLabel(
-#             self.sidebar,
-#             text=f"👋 {self.user_info['full_name']}",
-#             font=("Arial", 16, "bold"),
-#         )
-#         welcome_label.pack(pady=(20, 10), padx=20, anchor="w")
-
-#         role_text = (
-#             "👨‍💻 Developer" if self.user_info.get("is_developer") else "👷 Manager"
-#         )
-#         role_label = ctk.CTkLabel(
-#             self.sidebar, text=role_text, font=("Arial", 12), text_color="gray"
-#         )
-#         role_label.pack(pady=(0, 20), padx=20, anchor="w")
-
-#         # Separator
-#         ctk.CTkLabel(self.sidebar, text="━" * 25, text_color="gray").pack(pady=10)
-
-#         # Navigation buttons
-#         nav_buttons = [
-#             ("📊 Dashboard", self.show_dashboard),
-#             ("📦 Manage Spares", self.show_spares),
-#             ("⬇️ Borrow Items", self.show_borrow),
-#             ("⬆️ Return Items", self.show_return),
-#             ("📜 View History", self.show_history),
-#             ("📈 Reports", self.show_reports),
-#             ("🔔 Alerts", self.show_alerts),
-#         ]
-
-#         for text, command in nav_buttons:
-#             btn = ctk.CTkButton(
-#                 self.sidebar,
-#                 text=text,
-#                 command=command,
-#                 anchor="w",
-#                 height=40,
-#                 font=("Arial", 14),
-#                 fg_color="transparent",
-#                 hover_color="#3a3a3a",
-#                 text_color=("gray10", "#DCE4EE"),
-#             )
-#             btn.pack(pady=2, padx=10, fill="x")
-
-#         # Admin only section
-#         if self.user_info.get("is_developer"):
-#             ctk.CTkLabel(self.sidebar, text="━" * 25, text_color="gray").pack(pady=10)
-#             ctk.CTkLabel(
-#                 self.sidebar,
-#                 text="Admin Tools",
-#                 font=("Arial", 12, "bold"),
-#                 text_color="orange",
-#             ).pack(pady=5, padx=20, anchor="w")
-
-#             admin_buttons = [
-#                 ("👥 User Management", self.show_users),
-#                 ("💾 Backup System", self.show_backup),
-#                 ("⚙️ System Settings", self.show_settings),
-#             ]
-
-#             for text, command in admin_buttons:
-#                 btn = ctk.CTkButton(
-#                     self.sidebar,
-#                     text=text,
-#                     command=command,
-#                     anchor="w",
-#                     height=35,
-#                     font=("Arial", 13),
-#                     fg_color="transparent",
-#                     hover_color="#3a3a3a",
-#                     text_color="orange",
-#                 )
-#                 btn.pack(pady=2, padx=10, fill="x")
-
-#         # Separator before logout
-#         ctk.CTkLabel(self.sidebar, text="━" * 25, text_color="gray").pack(pady=20)
-
-#         # Logout button at bottom
-#         logout_btn = ctk.CTkButton(
-#             self.sidebar,
-#             text="🚪 Logout",
-#             command=self.logout,
-#             fg_color="#F44336",
-#             hover_color="#D32F2F",
-#             height=40,
-#             font=("Arial", 14, "bold"),
-#         )
-#         logout_btn.pack(side="bottom", pady=20, padx=10, fill="x")
-
-#     def _create_main_frame(self):
-#         """Create main content area"""
-#         self.main_frame = ctk.CTkFrame(self, corner_radius=10)
-#         self.main_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
-#         self.main_frame.grid_columnconfigure(0, weight=1)
-#         self.main_frame.grid_rowconfigure(1, weight=1)
-
-#         # Title bar for current view
-#         self.title_frame = ctk.CTkFrame(
-#             self.main_frame, height=50, fg_color="transparent"
-#         )
-#         self.title_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
-#         self.title_frame.grid_columnconfigure(0, weight=1)
-
-#         self.view_title = ctk.CTkLabel(
-#             self.title_frame, text="", font=("Arial", 22, "bold")
-#         )
-#         self.view_title.grid(row=0, column=0, sticky="w")
-
-#         # Content area
-#         self.content_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-#         self.content_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
-
-#     def _clear_content(self):
-#         """Clear content area"""
-#         for widget in self.content_frame.winfo_children():
-#             widget.destroy()
-
-#     def show_dashboard(self):
-#         """Show dashboard overview"""
-#         self.view_title.configure(text="📊 Dashboard")
-#         self._clear_content()
-
-#         # Dashboard content
-#         from logic.db import db
-
-#         # Get stats
-#         spares = db.execute("SELECT COUNT(*) as count FROM spares", fetch=True)
-#         total_items = db.execute(
-#             "SELECT SUM(quantity) as total FROM spares", fetch=True
-#         )
-#         low_stock = db.execute(
-#             "SELECT COUNT(*) as count FROM spares WHERE quantity <= min_quantity",
-#             fetch=True,
-#         )
-#         recent_movements = db.execute(
-#             "SELECT COUNT(*) as count FROM movements WHERE date(datetime) = date('now')",
-#             fetch=True,
-#         )
-
-#         # Stats grid
-#         stats_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-#         stats_frame.pack(fill="both", expand=True, padx=20, pady=20)
-
-#         stats = [
-#             ("📦", "Total Spares", f"{spares[0]['count'] if spares else 0}"),
-#             (
-#                 "🔢",
-#                 "Total Items",
-#                 f"{total_items[0]['total'] if total_items[0]['total'] else 0}",
-#             ),
-#             ("⚠️", "Low Stock Items", f"{low_stock[0]['count'] if low_stock else 0}"),
-#             (
-#                 "📝",
-#                 "Today's Movements",
-#                 f"{recent_movements[0]['count'] if recent_movements else 0}",
-#             ),
-#         ]
-
-#         # Create stat cards
-#         for i, (icon, label, value) in enumerate(stats):
-#             card = ctk.CTkFrame(
-#                 stats_frame,
-#                 width=200,
-#                 height=120,
-#                 corner_radius=15,
-#                 border_width=2,
-#                 border_color="#3a3a3a",
-#             )
-#             card.grid(row=i // 2, column=i % 2, padx=15, pady=15, sticky="nsew")
-
-#             # Icon
-#             ctk.CTkLabel(card, text=icon, font=("Arial", 24)).pack(pady=(20, 10))
-#             # Label
-#             ctk.CTkLabel(card, text=label, font=("Arial", 12), text_color="gray").pack()
-#             # Value
-#             ctk.CTkLabel(card, text=value, font=("Arial", 20, "bold")).pack(pady=5)
-
-#         # Configure grid
-#         for i in range(2):
-#             stats_frame.grid_columnconfigure(i, weight=1)
-#         for i in range(2):
-#             stats_frame.grid_rowconfigure(i, weight=1)
-
-#         # Quick actions
-#         actions_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
-#         actions_frame.pack(fill="x", padx=20, pady=(20, 10))
-
-#         ctk.CTkLabel(
-#             actions_frame, text="🚀 Quick Actions", font=("Arial", 16, "bold")
-#         ).pack(anchor="w", pady=(0, 15))
-
-#         # Quick action buttons
-#         quick_actions = [
-#             ("➕ Add New Spare", self.show_spares),
-#             ("⬇️ Quick Borrow", self.show_borrow),
-#             ("📜 View Today's Log", self.show_history),
-#         ]
-
-#         actions_btn_frame = ctk.CTkFrame(actions_frame, fg_color="transparent")
-#         actions_btn_frame.pack(fill="x")
-
-#         for text, command in quick_actions:
-#             btn = ctk.CTkButton(
-#                 actions_btn_frame,
-#                 text=text,
-#                 command=command,
-#                 width=180,
-#                 height=40,
-#                 font=("Arial", 13),
-#             )
-#             btn.pack(side="left", padx=5)
-
-#     def show_spares(self):
-#         """Show spare management interface"""
-#         self.view_title.configure(text="📦 Manage Spares")
-#         self._clear_content()
-
-#         # Placeholder for spares management
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Spare Management Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#         # Quick Add button
-#         add_btn = ctk.CTkButton(
-#             self.content_frame,
-#             text="➕ Add New Spare",
-#             command=self.add_spare,
-#             width=200,
-#             height=40,
-#         )
-#         add_btn.pack(pady=20)
-
-#     def show_borrow(self):
-#         """Show borrow interface"""
-#         self.view_title.configure(text="⬇️ Borrow Items")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Borrow Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_return(self):
-#         """Show return interface"""
-#         self.view_title.configure(text="⬆️ Return Items")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Return Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_history(self):
-#         """Show movement history"""
-#         self.view_title.configure(text="📜 Movement History")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="History Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_reports(self):
-#         """Show reports"""
-#         self.view_title.configure(text="📈 Reports")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Reports Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_alerts(self):
-#         """Show alerts"""
-#         self.view_title.configure(text="🔔 Alerts")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Alerts Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_users(self):
-#         """Show user management (admin only)"""
-#         self.view_title.configure(text="👥 User Management")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="User Management Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_backup(self):
-#         """Show backup system (admin only)"""
-#         self.view_title.configure(text="💾 Backup System")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Backup Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def show_settings(self):
-#         """Show settings (admin only)"""
-#         self.view_title.configure(text="⚙️ System Settings")
-#         self._clear_content()
-
-#         placeholder = ctk.CTkLabel(
-#             self.content_frame,
-#             text="Settings Interface\n(Coming Soon)",
-#             font=("Arial", 16),
-#             text_color="gray",
-#         )
-#         placeholder.pack(pady=100)
-
-#     def add_spare(self):
-#         """Add new spare (placeholder)"""
-#         print("Add spare clicked")
-
-#     def logout(self):
-#         """Logout and return to login"""
-#         self.destroy()
-#         # This will need to be handled by the parent app
-#         print("User logged out")
-
-#     def run(self):
-#         """Start dashboard"""
-#         self.mainloop()
+    def cleanup_and_exit(self):
+        """Clean up before exiting"""
+        self.logout()

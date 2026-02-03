@@ -2,6 +2,7 @@
 """
 Main application entry point
 """
+# import tkinter
 import customtkinter as ctk
 from UI.login import LoginWindow
 
@@ -38,9 +39,10 @@ class SpareManagerApp:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-    def show_dashboard(self, user):
+    def show_dashboard_view(self, user):
         """
-        Show main dashboard after login
+        Creates and shows the main Dashboard WINDOW after login.
+        This launches the entire dashboard interface.
         """
         print(f"✅ Logged in as: {user['full_name']}")
 
@@ -53,7 +55,7 @@ class SpareManagerApp:
 
     def run(self):
         """Start application"""
-        login = LoginWindow(self.show_dashboard)
+        login = LoginWindow(self.show_dashboard_view)
         login.run()
 
 

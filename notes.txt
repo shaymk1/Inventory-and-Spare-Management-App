@@ -2583,3 +2583,123 @@ old show dashboard function in the app.py:
         dashboard = Dashboard(user, self)
         dashboard.mainloop()
 
+
+old show_dashboard or launch_dashboard function :
+
+ # def launch_dashboard(self):
+    #     """Show dashboard overview"""
+    #     self.view_title.configure(text="📊 Dashboard")
+    #     self._clear_content()
+
+    #     # Dashboard content
+    #     try:
+    #         from logic.db import db
+
+    #         # Get stats
+    #         spares = db.execute("SELECT COUNT(*) as count FROM spares", fetch=True)
+    #         total_items = db.execute(
+    #             "SELECT SUM(quantity) as total FROM spares", fetch=True
+    #         )
+    #         low_stock = db.execute(
+    #             "SELECT COUNT(*) as count FROM spares WHERE quantity <= low_stock_threshold",
+    #             fetch=True,
+    #         )
+    #         recent_movements = db.execute(
+    #             "SELECT COUNT(*) as count FROM movements WHERE date(datetime) = date('now')",
+    #             fetch=True,
+    #         )
+
+    #         # Stats grid
+    #         stats_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+    #         stats_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+    #         stats = [
+    #             ("📦", "Total Spares", f"{spares[0]['count'] if spares else 0}"),
+    #             (
+    #                 "🔢",
+    #                 "Total Items",
+    #                 f"{total_items[0]['total'] if total_items[0]['total'] else 0}",
+    #             ),
+    #             (
+    #                 "⚠️",
+    #                 "Low Stock Items",
+    #                 f"{low_stock[0]['count'] if low_stock else 0}",
+    #             ),
+    #             (
+    #                 "📝",
+    #                 "Today's Movements",
+    #                 f"{recent_movements[0]['count'] if recent_movements else 0}",
+    #             ),
+    #         ]
+
+    #         # Create stat cards
+    #         for i, (icon, label, value) in enumerate(stats):
+    #             card = ctk.CTkFrame(
+    #                 stats_frame,
+    #                 width=200,
+    #                 height=120,
+    #                 corner_radius=15,
+    #                 border_width=2,
+    #                 border_color="#3a3a3a",
+    #             )
+    #             card.grid(row=i // 2, column=i % 2, padx=15, pady=15, sticky="nsew")
+
+    #             # Icon
+    #             ctk.CTkLabel(card, text=icon, font=("Arial", 24)).pack(pady=(20, 10))
+    #             # Label
+    #             ctk.CTkLabel(
+    #                 card, text=label, font=("Arial", 12), text_color="gray"
+    #             ).pack()
+    #             # Value
+    #             ctk.CTkLabel(card, text=value, font=("Arial", 20, "bold")).pack(pady=5)
+
+    #         # Configure grid
+    #         for i in range(2):
+    #             stats_frame.grid_columnconfigure(i, weight=1)
+    #         for i in range(2):
+    #             stats_frame.grid_rowconfigure(i, weight=1)
+
+    #         # Quick actions
+    #         actions_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+    #         actions_frame.pack(fill="x", padx=20, pady=(20, 10))
+
+    #         ctk.CTkLabel(
+    #             actions_frame, text="🚀 Quick Actions", font=("Arial", 16, "bold")
+    #         ).pack(anchor="w", pady=(0, 15))
+
+    #         # Quick action buttons
+    #         quick_actions = [
+    #             ("➕ Add New Spare", self.show_spares),
+    #             ("⬇️ Quick Borrow", self.show_borrow),
+    #             ("📜 View Today's Log", self.show_history),
+    #         ]
+
+    #         actions_btn_frame = ctk.CTkFrame(actions_frame, fg_color="transparent")
+    #         actions_btn_frame.pack(fill="x")
+
+    #         for text, command in quick_actions:
+    #             btn = ctk.CTkButton(
+    #                 actions_btn_frame,
+    #                 text=text,
+    #                 command=command,
+    #                 width=180,
+    #                 height=40,
+    #                 font=("Arial", 13),
+    #             )
+    #             btn.pack(side="left", padx=5)
+
+    #     except Exception as e:
+    #         # If database query fails, show error
+    #         error_label = ctk.CTkLabel(
+    #             self.content_frame,
+    #             text=f"⚠️ Could not load dashboard data:\n{str(e)}",
+    #             font=("Arial", 14),
+    #             text_color="orange",
+    #         )
+    #         error_label.pack(pady=100
+
+
+users and passwords:
+ ("store_manager", "store123"),
+    ("boss_backup", "boss123"),
+    ("dev_admin", "dev123"),

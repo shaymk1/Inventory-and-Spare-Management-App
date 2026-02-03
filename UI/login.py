@@ -2,6 +2,7 @@
 """
 Login screen for Spare Manager
 """
+import tkinter
 import customtkinter as ctk
 from logic.db import db
 
@@ -147,7 +148,24 @@ class LoginWindow:
 
     def login_success(self, user_data):
         """Close login and pass user to main app"""
-        self.window.destroy()
+        # Cancel any pending after() events first
+        try:
+            after_ids = self.window.tk.eval("after info").split()
+            for after_id in after_ids:
+                try:
+                    self.window.after_cancel(after_id)
+                except (ValueError, tkinter.TclError):
+                    pass  # Ignore invalid after IDs
+        except (AttributeError, tkinter.TclError):
+            pass  # No after events or window already closed
+
+        # Destroy window
+        try:
+            self.window.destroy()
+        except (AttributeError, tkinter.TclError):
+            pass
+
+        # Call the callback
         self.on_login_success(user_data)
 
     def run(self):
