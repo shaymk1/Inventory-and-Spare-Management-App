@@ -5,6 +5,7 @@ Main dashboard with navigation
 import tkinter
 import customtkinter as ctk
 from logic.db import db
+from UI.spare_form import SpareManagement
 
 #  imports for image handling
 try:
@@ -381,78 +382,9 @@ class Dashboard(ctk.CTkToplevel):
         self.view_title.configure(text="📦 Manage Spares")
         self._clear_content()
 
-        # Create a tabbed interface for spares
-        tabview = ctk.CTkTabview(self.content_frame)
-        tabview.pack(fill="both", expand=True, padx=20, pady=20)
-
-        # Add tabs
-        tabview.add("View Spares")
-        tabview.add("Add New")
-        tabview.add("Search")
-
-        # View Spares tab
-        view_frame = tabview.tab("View Spares")
-
-        # Create a scrollable table for spares
-        scrollable_frame = ScrollableFrame(view_frame, height=400)
-        scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Add sample data (replace with actual database query)
-        headers = ["ID", "Name", "Code", "Quantity", "Min Qty", "Location"]
-        for col, header in enumerate(headers):
-            label = ctk.CTkLabel(
-                scrollable_frame, text=header, font=("Arial", 12, "bold"), width=100
-            )
-            label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
-
-        # Sample data rows
-        sample_data = [
-            [1, "Bolt M6", "BLT-M6-50", 150, 50, "Shelf A1"],
-            [2, "Washer 10mm", "WSH-10", 80, 30, "Shelf A2"],
-            [3, "Nut M8", "NUT-M8", 200, 40, "Shelf B1"],
-        ]
-
-        for row, data in enumerate(sample_data, start=1):
-            for col, value in enumerate(data):
-                label = ctk.CTkLabel(
-                    scrollable_frame, text=str(value), font=("Arial", 11), width=100
-                )
-                label.grid(row=row, column=col, padx=5, pady=2, sticky="w")
-
-        # Add New tab
-        add_frame = tabview.tab("Add New")
-
-        # Form for adding new spare
-        form_frame = ctk.CTkFrame(add_frame)
-        form_frame.pack(pady=50, padx=50, fill="both", expand=True)
-
-        fields = [
-            ("Spare Name:", ctk.CTkEntry),
-            ("Spare Code:", ctk.CTkEntry),
-            ("Quantity:", ctk.CTkEntry),
-            ("Minimum Quantity:", ctk.CTkEntry),
-            ("Location:", ctk.CTkEntry),
-        ]
-
-        for i, (label_text, widget_type) in enumerate(fields):
-            ctk.CTkLabel(form_frame, text=label_text, font=("Arial", 12)).grid(
-                row=i, column=0, pady=10, padx=10, sticky="e"
-            )
-            entry = widget_type(form_frame, width=200)
-            entry.grid(row=i, column=1, pady=10, padx=10, sticky="w")
-
-        # Add button
-        add_btn = ctk.CTkButton(
-            form_frame,
-            text="➕ Add Spare",
-            command=self.add_spare,
-            width=150,
-            height=40,
-            font=("Arial", 13, "bold"),
-            fg_color="#4CAF50",
-        )
-        add_btn.grid(row=len(fields), column=0, columnspan=2, pady=20)
-
+        # Create spare management interface
+        self.spare_management = SpareManagement(self.content_frame, self.user_info)
+        
     def show_borrow(self):
         """Show borrow interface"""
         self.view_title.configure(text="⬇️ Borrow Items")
