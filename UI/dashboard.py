@@ -104,37 +104,24 @@ class Dashboard(ctk.CTkToplevel):
             fg_color="transparent",
         )
         scrollable_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
-
         # ===== LOGO IN SIDEBAR =====
         logo_container = ctk.CTkFrame(scrollable_frame, fg_color="transparent")
         logo_container.pack(pady=(0, 15))
 
-        try:
-            if PIL_AVAILABLE:
-                logo_path = "assets/logo.png"
-                if os.path.exists(logo_path):
-                    logo_img = Image.open(logo_path)
-                    logo_image = ctk.CTkImage(
-                        light_image=logo_img, dark_image=logo_img, size=(40, 40)
-                    )
-                    ctk.CTkLabel(logo_container, image=logo_image, text="").pack()
-                else:
-                    raise FileNotFoundError("Logo file not found")
-            else:
-                raise ImportError("PIL not available")
+        # Logo icon with circle background
+        icon_frame = ctk.CTkFrame(
+            logo_container,
+            width=50,
+            height=50,
+            corner_radius=25,
+            fg_color="#2E8B57",  # Green background
+        )
+        icon_frame.pack()
+        icon_frame.pack_propagate(False)
 
-        except (FileNotFoundError, UnidentifiedImageError, OSError):
-            # Image file issues
-            ctk.CTkLabel(logo_container, text="🔧", font=("Arial", 28)).pack()
-        except ImportError:
-            # PIL not installed
-            ctk.CTkLabel(logo_container, text="[LOGO]", font=("Arial", 20)).pack()
+        ctk.CTkLabel(icon_frame, text="🔧", font=("Arial", 24)).pack(expand=True)
 
-        except Exception as e:
-            # Any other error
-            print(f"⚠️ Logo error: {e}")
-            ctk.CTkLabel(logo_container, text="📦", font=("Arial", 28)).pack()
-        # App name text (always show this)
+        # App name
         ctk.CTkLabel(
             logo_container,
             text="SPARE MANAGER",
@@ -142,6 +129,13 @@ class Dashboard(ctk.CTkToplevel):
             text_color="#4FC3F7",
         ).pack(pady=(5, 0))
 
+        # Tagline
+        ctk.CTkLabel(
+            logo_container,
+            text="Inventory System",
+            font=("Arial", 10),
+            text_color="gray",
+        ).pack()
         # Navigation buttons in scrollable area
         nav_buttons = [
             ("📊 Dashboard", self.launch_dashboard),
@@ -269,28 +263,41 @@ class Dashboard(ctk.CTkToplevel):
         # ===== LOGO IN MAIN DASHBOARD =====
         row_start = 0
 
-        try:
-            if PIL_AVAILABLE:
-                logo_path = "assets/logo.png"
-                if os.path.exists(logo_path):
-                    logo_img = Image.open(logo_path)
-                    logo_image = ctk.CTkImage(
-                        light_image=logo_img, dark_image=logo_img, size=(70, 70)
-                    )
-                    logo_container = ctk.CTkFrame(stats_frame, fg_color="transparent")
-                    logo_container.grid(row=0, column=0, columnspan=2, pady=(0, 30))
+        # Logo container
+        logo_container = ctk.CTkFrame(stats_frame, fg_color="transparent")
+        logo_container.grid(row=0, column=0, columnspan=2, pady=(0, 25))
 
-                    ctk.CTkLabel(logo_container, image=logo_image, text="").pack()
-                    row_start = 1
-                else:
-                    raise FileNotFoundError("Logo file not found")
-        except (FileNotFoundError, UnidentifiedImageError, OSError, ImportError):
-            # No logo, stats start at row 0
-            row_start = 0
-        except Exception as e:
-            print(f"⚠️ Dashboard logo error: {e}")
-            row_start = 0
+        # Logo icon with background circle
+        icon_frame = ctk.CTkFrame(
+            logo_container,
+            width=80,
+            height=80,
+            corner_radius=40,
+            fg_color="#2E8B57",  # Green circle
+            bg_color="transparent",
+        )
+        icon_frame.pack()
+        icon_frame.pack_propagate(False)
 
+        ctk.CTkLabel(icon_frame, text="🔧", font=("Arial", 32)).pack(expand=True)
+
+        # App name
+        ctk.CTkLabel(
+            logo_container,
+            text="Dashboard Overview",
+            font=("Arial", 18, "bold"),
+            text_color="#4FC3F7",
+        ).pack(pady=(10, 5))
+
+        # Tagline
+        ctk.CTkLabel(
+            logo_container,
+            text="Inventory Management System",
+            font=("Arial", 12),
+            text_color="gray",
+        ).pack()
+
+        row_start = 1  # Stats start below logo
         # Get stats from database
         try:
             # from logic.db import db
