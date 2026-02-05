@@ -89,12 +89,8 @@ class SpareManagement:
     def _setup_add_tab(self):
         """Setup the 'Add New' tab with scrollbar"""
         add_frame = self.tabview.tab("Add New")
-        # self._clear_tab(add_frame)  # Clear any existing widgets
-        # for widget in add_frame.winfo_children():
-        #     widget.destroy()
-
+        
         # Create scrollable frame for the entire tab
-        # scroll_frame = ctk.CTkScrollableFrame(add_frame)
         scroll_frame = ctk.CTkScrollableFrame(add_frame, label_text="")
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
