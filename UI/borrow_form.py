@@ -4,6 +4,8 @@ Borrow Items Interface
 
 import customtkinter as ctk
 from logic.db import db
+from UI.components.message_dialog import MessageDialog
+from datetime import datetime
 
 
 class BorrowForm:
@@ -187,90 +189,266 @@ class BorrowForm:
             text="Available quantity: --", text_color="gray"
         )
 
+       def _process_borrow(self):
+        """Process the borrow request"""
+        # Get form values
+        if not self.spare_combo:
+            MessageDialog.show_error(self.main_frame, "Error", "No spares available to borrow")
+            return
+        
+        selected_index = self.spare_combo.current()
+        if selected_index < 0:
+            MessageDialog.show_error(self.main_frame, "Error", "Please select a spare")
+            return
+        
+        spare = self.current_spares[selected_index]
+        spare_id = spare['id']
+        spare_name = spare['name']
+        available_qty = spare['quantity']
+        
+        # Get quantity to borrow
+        qty_text = self.quantity_entry.get().strip()
+        if not qty_text:
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter quantity to borrow")
+            return
+        
+        try:
+            borrow_qty = int(qty_text)
+            if borrow_qty <= 0:
+                MessageDialog.show_error(self.main_frame, "Error", "Quantity must be greater than 0")
+                return
+            if borrow_qty > available_qty:
+                MessageDialog.show_error(
+                    self.main_frame,
+                    "Error",
+                    f"Cannot borrow more than available!\n\nAvailable: {available_qty}\nRequested: {borrow_qty}"
+                )
+                return
+        except ValueError:
+            MessageDialog.show_error(self.main_frame, "Error", "Quantity must be a number")
+            return
+        
+        # Get borrower name
+        borrower = self.borrower_entry.get().strip()
+        if not borrower:
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter borrower name")
+            return
+        
+        # Get notes
+        notes = self.notes_text.get("1.0", "end-1c").strip()
+        
+        # Show confirmation dialog
+        MessageDialog.show_confirm(
+            self.main_frame,
+            "Confirm Borrow",
+            f"Borrow {borrow_qty} of {spare_name}?\n\nBorrower: {borrower}\nNotes: {notes[:50]}...",
+            lambda: self._execute_borrow(spare_id, spare_name, borrow_qty, borrower, notes)
+        )
+    
+       def _process_borrow(self):
+        """Process the borrow request"""
+        # Get form values
+        if not self.spare_combo:
+            MessageDialog.show_error(self.main_frame, "Error", "No spares available to borrow")
+            return
+        
+        selected_index = self.spare_combo.current()
+        if selected_index < 0:
+            MessageDialog.show_error(self.main_frame, "Error", "Please select a spare")
+            return
+        
+        spare = self.current_spares[selected_index]
+        spare_id = spare['id']
+        spare_name = spare['name']
+        available_qty = spare['quantity']
+        
+        # Get quantity to borrow
+        qty_text = self.quantity_entry.get().strip()
+        if not qty_text:
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter quantity to borrow")
+            return
+        
+        try:
+            borrow_qty = int(qty_text)
+            if borrow_qty <= 0:
+                MessageDialog.show_error(self.main_frame, "Error", "Quantity must be greater than 0")
+                return
+            if borrow_qty > available_qty:
+                MessageDialog.show_error(
+                    self.main_frame,
+                    "Error",
+                    f"Cannot borrow more than available!\n\nAvailable: {available_qty}\nRequested: {borrow_qty}"
+                )
+                return
+        except ValueError:
+            MessageDialog.show_error(self.main_frame, "Error", "Quantity must be a number")
+            return
+        
+        # Get borrower name
+        borrower = self.borrower_entry.get().strip()
+        if not borrower:
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter borrower name")
+            return
+        
+        # Get notes
+        notes = self.notes_text.get("1.0", "end-1c").strip()
+        
+        # Show confirmation dialog
+        MessageDialog.show_confirm(
+            self.main_frame,
+            "Confirm Borrow",
+            f"Borrow {borrow_qty} of {spare_name}?\n\nBorrower: {borrower}\nNotes: {notes[:50]}...",
+            lambda: self._execute_borrow(spare_id, spare_name, borrow_qty, borrower, notes)
+        )
+        def _process_borrow(self):
+        """Process the borrow request"""
+        # Get form values
+        if not self.spare_combo:
+            MessageDialog.show_error(self.main_frame, "Error", "No spares available to borrow")
+            return
+        
+        selected_index = self.spare_combo.current()
+        if selected_index < 0:
+            MessageDialog.show_error(self.main_frame, "Error", "Please select a spare")
+            return
+        
+        spare = self.current_spares[selected_index]
+        spare_id = spare['id']
+        spare_name = spare['name']
+        available_qty = spare['quantity']
+        
+        # Get quantity to borrow
+        qty_text = self.quantity_entry.get().strip()
+        if not qty_text:
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter quantity to borrow")
+            return
+        
+        try:
+            borrow_qty = int(qty_text)
+            if borrow_qty <= 0:
+                MessageDialog.show_error(self.main_frame, "Error", "Quantity must be greater than 0")
+                return
+            if borrow_qty > available_qty:
+                MessageDialog.show_error(
+                    self.main_frame,
+                    "Error",
+                    f"Cannot borrow more than available!\n\nAvailable: {available_qty}\nRequested: {borrow_qty}"
+                )
+                return
+        except ValueError:
+            MessageDialog.show_error(self.main_frame, "Error", "Quantity must be a number")
+            return
+        
+        # Get borrower name
+        borrower = self.borrower_entry.get().strip()
+        if not borrower:
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter borrower name")
+            return
+        
+        # Get notes
+        notes = self.notes_text.get("1.0", "end-1c").strip()
+        
+        # Show confirmation dialog
+        MessageDialog.show_confirm(
+            self.main_frame,
+            "Confirm Borrow",
+            f"Borrow {borrow_qty} of {spare_name}?\n\nBorrower: {borrower}\nNotes: {notes[:50]}...",
+            lambda: self._execute_borrow(spare_id, spare_name, borrow_qty, borrower, notes)
+        )
     def _process_borrow(self):
         """Process the borrow request"""
         # Get form values
         if not self.spare_combo:
-            self._show_error("No spares available to borrow")
+            MessageDialog.show_error(self.main_frame, "Error", "No spares available to borrow")
             return
-
+        
         selected_index = self.spare_combo.current()
         if selected_index < 0:
-            self._show_error("Please select a spare")
+            MessageDialog.show_error(self.main_frame, "Error", "Please select a spare")
             return
-
+        
         spare = self.current_spares[selected_index]
-        spare_id = spare["id"]
-        spare_name = spare["name"]
-        available_qty = spare["quantity"]
-
+        spare_id = spare['id']
+        spare_name = spare['name']
+        available_qty = spare['quantity']
+        
         # Get quantity to borrow
         qty_text = self.quantity_entry.get().strip()
         if not qty_text:
-            self._show_error("Please enter quantity to borrow")
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter quantity to borrow")
             return
-
         try:
             borrow_qty = int(qty_text)
             if borrow_qty <= 0:
-                self._show_error("Quantity must be greater than 0")
+                MessageDialog.show_error(self.main_frame, "Error", "Quantity must be greater than 0")
                 return
             if borrow_qty > available_qty:
-                self._show_error(f"Cannot borrow more than available ({available_qty})")
+                MessageDialog.show_error(
+                    self.main_frame,
+                    "Error",
+                    f"Cannot borrow more than available!\n\nAvailable: {available_qty}\nRequested: {borrow_qty}"
+                )
                 return
         except ValueError:
-            self._show_error("Quantity must be a number")
+            MessageDialog.show_error(self.main_frame, "Error", "Quantity must be a number")
             return
-
+        
         # Get borrower name
         borrower = self.borrower_entry.get().strip()
         if not borrower:
-            self._show_error("Please enter borrower name")
+            MessageDialog.show_error(self.main_frame, "Error", "Please enter borrower name")
             return
-
+        
         # Get notes
         notes = self.notes_text.get("1.0", "end-1c").strip()
-
+        # Show confirmation dialog
+        MessageDialog.show_confirm(
+            self.main_frame,
+            "Confirm Borrow",
+            f"Borrow {borrow_qty} of {spare_name}?\n\nBorrower: {borrower}\nNotes: {notes[:50]}...",
+            lambda: self._execute_borrow(spare_id, spare_name, borrow_qty, borrower, notes)
+        )
+    def _execute_borrow(self, spare_id, spare_name, borrow_qty, borrower, notes):
+        """Execute the borrow transaction after confirmation"""
         try:
-            # Start transaction
             # 1. Update spare quantity
             db.execute(
                 "UPDATE spares SET quantity = quantity - ? WHERE id = ?",
-                (borrow_qty, spare_id),
+                (borrow_qty, spare_id)
             )
-
+            
             # 2. Log movement
             db.execute(
                 """
                 INSERT INTO movements (spare_id, user_id, quantity, movement_type, notes)
-                VALUES (?, ?, ?, 'borrow', ?)
+                VALUES (?, 1, ?, 'borrow', ?)
                 """,
-                (
-                    spare_id,
-                    self.user_info.get("id", 1),
-                    borrow_qty,
-                    notes or f"Borrowed by {borrower}",
-                ),
+                (spare_id, borrow_qty, notes or f"Borrowed by {borrower}")
             )
-
+            
             # Show success message
-            self._show_success(f"Successfully borrowed {borrow_qty} of {spare_name}")
-
+            MessageDialog.show_success(
+                self.main_frame,
+                "Success",
+                f"✅ Successfully borrowed {borrow_qty} of {spare_name}!\n\nBorrower: {borrower}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
+            
             # Reset form and reload spares
             self._reset_form()
             self._load_spares()
-
+            
             # Update dropdown if needed
             if self.spare_combo:
-                spare_options = [
-                    f"{s['name']} ({s['code']}) - Qty: {s['quantity']}"
-                    for s in self.current_spares
-                ]
+                spare_options = [f"{s['name']} ({s['code']}) - Qty: {s['quantity']}" 
+                               for s in self.current_spares]
                 self.spare_combo.configure(values=spare_options)
-
+            
         except Exception as e:
-            self._show_error(f"Database error: {str(e)}")
-
+            MessageDialog.show_error(
+                self.main_frame,
+                "Database Error",
+                f"Failed to process borrow:\n{str(e)}"
+            )
     def _show_error(self, message):
         """Show error message (placeholder - implement proper dialog later)"""
         print(f"❌ Error: {message}")
@@ -284,3 +462,123 @@ class BorrowForm:
     def destroy(self):
         """Clean up"""
         self.main_frame.destroy()
+    def show_borrow_history(self):
+        """Show borrow history (optional - can be called from a button)"""
+        try:
+            # Get borrow history
+            history = db.execute(
+                """
+                SELECT 
+                    m.id,
+                    s.name as spare_name,
+                    s.code as spare_code,
+                    m.quantity,
+                    m.movement_date,
+                    m.notes,
+                    m.returned_quantity
+                FROM movements m
+                JOIN spares s ON m.spare_id = s.id
+                WHERE m.movement_type = 'borrow'
+                ORDER BY m.movement_date DESC
+                LIMIT 50
+                """,
+                fetch=True
+            )
+            
+            if not history:
+                MessageDialog.show_info(self.main_frame, "History", "No borrow history found")
+                return
+            
+            # Create history dialog
+            dialog = ctk.CTkToplevel(self.main_frame)
+            dialog.title("Borrow History")
+            dialog.geometry("800x500")
+            dialog.resizable(True, True)
+            
+            # Center dialog
+            dialog.update_idletasks()
+            width = dialog.winfo_width()
+            height = dialog.winfo_height()
+            x = (self.main_frame.winfo_screenwidth() // 2) - (width // 2)
+            y = (self.main_frame.winfo_screenheight() // 2) - (height // 2)
+            dialog.geometry(f"{width}x{height}+{x}+{y}")
+            
+            # Title
+            ctk.CTkLabel(
+                dialog,
+                text="📜 Borrow History",
+                font=("Arial", 18, "bold")
+            ).pack(pady=(15, 10))
+            
+            # Create scrollable table
+            scroll_frame = ctk.CTkScrollableFrame(dialog, height=400)
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+            
+            # Table headers
+            headers = ["Date", "Spare", "Quantity", "Returned", "Status", "Notes"]
+            for col, header in enumerate(headers):
+                label = ctk.CTkLabel(
+                    scroll_frame,
+                    text=header,
+                    font=("Arial", 12, "bold"),
+                    width=120
+                )
+                label.grid(row=0, column=col, padx=5, pady=10, sticky="w")
+            
+            # Add history rows
+            for row, record in enumerate(history, start=1):
+                # Format date
+                date_str = record['movement_date']
+                if date_str:
+                    try:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                        display_date = date_obj.strftime('%b %d, %Y %H:%M')
+                    except:
+                        display_date = date_str
+                else:
+                    display_date = "N/A"
+                
+                # Determine status
+                returned = record['returned_quantity'] or 0
+                borrowed = record['quantity']
+                
+                if returned >= borrowed:
+                    status = "✅ Returned"
+                    status_color = "green"
+                elif returned > 0:
+                    status = "🔄 Partially Returned"
+                    status_color = "orange"
+                else:
+                    status = "⏳ Pending"
+                    status_color = "gray"
+                
+                # Display data
+                data = [
+                    display_date,
+                    f"{record['spare_name']}\n({record['spare_code']})",
+                    str(borrowed),
+                    str(returned),
+                    status,
+                    (record['notes'] or "")[:30] + ("..." if len(record['notes'] or "") > 30 else "")
+                ]
+                
+                for col, value in enumerate(data):
+                    label = ctk.CTkLabel(
+                        scroll_frame,
+                        text=value,
+                        font=("Arial", 11),
+                        width=120,
+                        text_color=status_color if col == 4 else "white"
+                    )
+                    label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+            
+            # Close button
+            ctk.CTkButton(
+                dialog,
+                text="Close",
+                width=100,
+                command=dialog.destroy
+            ).pack(pady=(0, 15))
+            
+        except Exception as e:
+            MessageDialog.show_error(self.main_frame, "Error", f"Failed to load history:\n{str(e)}")
