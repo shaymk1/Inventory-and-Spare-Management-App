@@ -165,6 +165,17 @@ class BorrowForm:
             fg_color="gray",
             command=self._reset_form,
         ).pack(side="left", padx=10)
+        
+        # Add history button next to other buttons
+        ctk.CTkButton(
+            button_frame,
+            text="📜 View History",
+            width=150,
+            height=45,
+            font=("Arial", 14),
+            fg_color="#9C27B0",
+            command=self.show_borrow_history
+        ).pack(side="left", padx=10)
 
     def _update_quantity_info(self, event=None):
         """Update the available quantity display when spare is selected"""
