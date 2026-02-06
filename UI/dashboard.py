@@ -7,6 +7,7 @@ import customtkinter as ctk
 from logic.db import db
 from UI.spare_form import SpareManagement
 from UI.borrow_form import BorrowForm
+from UI.return_form import ReturnForm
 
 #  imports for image handling
 try:
@@ -399,32 +400,8 @@ class Dashboard(ctk.CTkToplevel):
         self.view_title.configure(text="⬆️ Return Items")
         self._clear_content()
 
-        # Similar to borrow but for returns
-        form_frame = ctk.CTkFrame(self.content_frame)
-        form_frame.pack(pady=50, padx=100, fill="both", expand=True)
-
-        ctk.CTkLabel(
-            form_frame, text="Return Items Form", font=("Arial", 18, "bold")
-        ).pack(pady=20)
-
-        # Placeholder content
-        ctk.CTkLabel(
-            form_frame,
-            text="This interface will show:\n\n• List of borrowed items\n• Quantity to return\n• Condition check\n• Return confirmation",
-            font=("Arial", 14),
-            justify="left",
-        ).pack(pady=30)
-
-        return_btn = ctk.CTkButton(
-            form_frame,
-            text="🔄 Process Return",
-            command=self.process_return,
-            width=200,
-            height=45,
-            font=("Arial", 14, "bold"),
-            fg_color="#FF9800",
-        )
-        return_btn.pack(pady=20)
+        # Create return interface
+        self.return_form = ReturnForm(self.content_frame, self.user_info)
 
     def show_history(self):
         """Show movement history"""
