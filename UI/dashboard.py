@@ -6,6 +6,7 @@ import tkinter
 import customtkinter as ctk
 from logic.db import db
 from UI.spare_form import SpareManagement
+from UI.borrow_form import BorrowForm
 
 #  imports for image handling
 try:
@@ -384,59 +385,14 @@ class Dashboard(ctk.CTkToplevel):
 
         # Create spare management interface
         self.spare_management = SpareManagement(self.content_frame, self.user_info)
-        
+
     def show_borrow(self):
         """Show borrow interface"""
         self.view_title.configure(text="⬇️ Borrow Items")
         self._clear_content()
 
-        # Borrow form
-        form_frame = ctk.CTkFrame(self.content_frame)
-        form_frame.pack(pady=50, padx=100, fill="both", expand=True)
-
-        ctk.CTkLabel(
-            form_frame, text="Borrow Items Form", font=("Arial", 18, "bold")
-        ).pack(pady=20)
-
-        # Form fields
-        fields_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        fields_frame.pack(pady=20)
-
-        fields = [
-            ("Select Spare:", ctk.CTkComboBox),
-            ("Borrower Name:", ctk.CTkEntry),
-            ("Quantity to Borrow:", ctk.CTkEntry),
-            ("Purpose:", ctk.CTkTextbox),
-        ]
-
-        for i, (label_text, widget_type) in enumerate(fields):
-            ctk.CTkLabel(fields_frame, text=label_text, font=("Arial", 12)).grid(
-                row=i, column=0, pady=10, padx=10, sticky="e"
-            )
-
-            if widget_type == ctk.CTkTextbox:
-                widget = widget_type(fields_frame, width=200, height=60)
-            elif widget_type == ctk.CTkComboBox:
-                widget = widget_type(
-                    fields_frame, width=200, values=["Bolt M6", "Washer 10mm", "Nut M8"]
-                )
-                widget.set("Select spare...")
-            else:
-                widget = widget_type(fields_frame, width=200)
-
-            widget.grid(row=i, column=1, pady=10, padx=10, sticky="w")
-
-        # Borrow button
-        borrow_btn = ctk.CTkButton(
-            form_frame,
-            text="✅ Borrow Items",
-            command=self.process_borrow,
-            width=200,
-            height=45,
-            font=("Arial", 14, "bold"),
-            fg_color="#2196F3",
-        )
-        borrow_btn.pack(pady=30)
+        # Create borrow interface
+        self.borrow_form = BorrowForm(self.content_frame, self.user_info)
 
     def show_return(self):
         """Show return interface"""

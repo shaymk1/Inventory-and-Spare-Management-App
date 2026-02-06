@@ -2820,3 +2820,74 @@ if DEBUG_MODE:
         )
         add_btn.grid(row=len(fields), column=0, columnspan=2, pady=20)
 
+completed so far :
+✅ CURRENT SUCCESSES:
+✅ Database - Created and connected
+
+✅ Login System - All 3 users working (dev, manager, boss)
+
+✅ Dashboard - With live stats and scrollable sidebar
+
+✅ Role-based UI - Admin gets extra tools
+
+✅ Spare Management - Add/view spares with database
+
+✅ Logos - In sidebar and dashboard
+
+✅ Clean UI - No overlap, proper scrolling
+
+
+old show_borrow method in dashboard.py
+def show_borrow(self):
+        """Show borrow interface"""
+        self.view_title.configure(text="⬇️ Borrow Items")
+        self._clear_content()
+
+        # Borrow form
+        form_frame = ctk.CTkFrame(self.content_frame)
+        form_frame.pack(pady=50, padx=100, fill="both", expand=True)
+
+        ctk.CTkLabel(
+            form_frame, text="Borrow Items Form", font=("Arial", 18, "bold")
+        ).pack(pady=20)
+
+        # Form fields
+        fields_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
+        fields_frame.pack(pady=20)
+
+        fields = [
+            ("Select Spare:", ctk.CTkComboBox),
+            ("Borrower Name:", ctk.CTkEntry),
+            ("Quantity to Borrow:", ctk.CTkEntry),
+            ("Purpose:", ctk.CTkTextbox),
+        ]
+
+        for i, (label_text, widget_type) in enumerate(fields):
+            ctk.CTkLabel(fields_frame, text=label_text, font=("Arial", 12)).grid(
+                row=i, column=0, pady=10, padx=10, sticky="e"
+            )
+
+            if widget_type == ctk.CTkTextbox:
+                widget = widget_type(fields_frame, width=200, height=60)
+            elif widget_type == ctk.CTkComboBox:
+                widget = widget_type(
+                    fields_frame, width=200, values=["Bolt M6", "Washer 10mm", "Nut M8"]
+                )
+                widget.set("Select spare...")
+            else:
+                widget = widget_type(fields_frame, width=200)
+
+            widget.grid(row=i, column=1, pady=10, padx=10, sticky="w")
+
+        # Borrow button
+        borrow_btn = ctk.CTkButton(
+            form_frame,
+            text="✅ Borrow Items",
+            command=self.process_borrow,
+            width=200,
+            height=45,
+            font=("Arial", 14, "bold"),
+            fg_color="#2196F3",
+        )
+        borrow_btn.pack(pady=30)
+
