@@ -131,7 +131,12 @@ class MessageDialog:
         dialog.geometry("400x220")
         dialog.resizable(False, False)
         dialog.transient(parent)
-        dialog.grab_set()
+
+        # Bring to front and focus
+        dialog.lift()
+        dialog.focus_force()
+        dialog.attributes("-topmost", True)
+        dialog.after(100, lambda: dialog.attributes("-topmost", False))
 
         # Center dialog
         dialog.update_idletasks()
@@ -157,16 +162,37 @@ class MessageDialog:
         btn_frame = ctk.CTkFrame(frame, fg_color="transparent")
         btn_frame.pack()
 
+        def handle_confirm():
+            """Handle confirm with proper cleanup"""
+            try:
+                dialog.grab_release()  # Release grab before callback
+                on_confirm()
+            finally:
+                try:
+                    dialog.destroy()
+                except Exception:
+                    pass  # Dialog already destroyed
+
+        def handle_cancel():
+            """Handle cancel with proper cleanup"""
+            try:
+                dialog.grab_release()
+                dialog.destroy()
+            except Exception:
+                pass  # Dialog already destroyed
+
         ctk.CTkButton(
-            btn_frame,
-            text="Yes",
-            width=100,
-            fg_color="#4CAF50",
-            command=lambda: [on_confirm(), dialog.destroy()],
+            btn_frame, text="Yes", width=100, fg_color="#4CAF50", command=handle_confirm
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
-            btn_frame, text="No", width=100, fg_color="gray", command=dialog.destroy
+            btn_frame, text="No", width=100, fg_color="gray", command=handle_cancel
         ).pack(side="left", padx=5)
+
+        # Handle window close (X button)
+        dialog.protocol("WM_DELETE_WINDOW", handle_cancel)
+
+        # Set grab after window is fully set up
+        dialog.after(10, dialog.grab_set)
 
         return dialog

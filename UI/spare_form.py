@@ -275,10 +275,10 @@ class SpareManagement:
             # Insert into database
             db.execute(
                 """
-                INSERT INTO spares (name, code, quantity, low_stock_threshold, image_path, is_active)
-                VALUES (?, ?, ?, ?, ?, 1)
+                INSERT INTO spares (name, code, quantity, low_stock_threshold, image_path, notes, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, 1)  
                 """,
-                (name, code, quantity, threshold, image_path, notes),
+                (name, code, quantity, threshold, image_path, notes),  
             )
 
             # Clear form

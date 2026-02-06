@@ -96,7 +96,7 @@ class Database:
 
         conn.commit()
         conn.close()
-        self.migrate_database()
+        self._migrate_database()
         print("✅ Database tables created")
 
     def get_connection(self):
