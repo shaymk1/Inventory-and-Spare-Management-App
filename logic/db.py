@@ -23,8 +23,32 @@ class Database:
         # Initialize on first use
         self._setup_database()
 
-    # setup database method:
+    def _migrate_database(self):
+        """Apply any needed database migrations"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
 
+        try:
+            # Check if spares table has 'notes' column
+            cursor.execute("PRAGMA table_info(spares)")
+            columns = cursor.fetchall()
+            column_names = [col[1] for col in columns]  # Column name is at index 1
+
+            # Add missing columns
+            if "notes" not in column_names:
+                print("🔄 Adding missing column: notes to spares table")
+                cursor.execute("ALTER TABLE spares ADD COLUMN notes TEXT")
+
+            conn.commit()
+            print("✅ Database migration complete")
+
+        except Exception as e:
+            print(f"⚠️ Migration error (may be normal if tables don't exist yet): {e}")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    # setup database method:
     def _setup_database(self):
         """Create database and tables if they don't exist"""
         # Check if database file exists AND has tables
@@ -72,6 +96,7 @@ class Database:
 
         conn.commit()
         conn.close()
+        self.migrate_database()
         print("✅ Database tables created")
 
     def get_connection(self):
@@ -123,12 +148,11 @@ class Database:
         """Get all spare parts"""
         return self.execute("SELECT * FROM spares ORDER BY code", fetch=True)
 
-    
     def add_spare(self, code, name, quantity=0, low_threshold=5):
         """Add a new spare part"""
         return self.execute(
             "INSERT INTO spares (code, name, quantity, low_stock_threshold) VALUES (?, ?, ?, ?)",
-            (code, name, quantity, low_threshold),  
+            (code, name, quantity, low_threshold),
         )
 
     def borrow_spare(self, spare_id, user_name, quantity, notes=""):

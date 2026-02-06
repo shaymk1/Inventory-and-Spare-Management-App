@@ -6,7 +6,8 @@ Add, Edit, Delete, and View spares
 import customtkinter as ctk
 import os
 from tkinter import filedialog
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk  # for image handling
+from UI.components.message_dialog import MessageDialog
 
 
 class SpareManagement:
@@ -89,7 +90,7 @@ class SpareManagement:
     def _setup_add_tab(self):
         """Setup the 'Add New' tab with scrollbar"""
         add_frame = self.tabview.tab("Add New")
-        
+
         # Create scrollable frame for the entire tab
         scroll_frame = ctk.CTkScrollableFrame(add_frame, label_text="")
         scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -230,33 +231,46 @@ class SpareManagement:
 
         # Basic validation
         if not name or not code:
-            self._show_message("❌ Error", "Name and Code are required!", "error")
+            MessageDialog.show_error(
+                self.main_frame, "Error", "Name and Code are required!"
+            )
             return
 
         try:
             quantity = int(quantity) if quantity else 0
             threshold = int(threshold) if threshold else 5
         except ValueError:
-            self._show_message(
-                "❌ Error", "Quantity and Threshold must be numbers!", "error"
+            MessageDialog.show_error(
+                self.main_frame, "Error", "Quantity and Threshold must be numbers!"
             )
             return
 
         if quantity < 0 or threshold < 0:
-            self._show_message(
-                "❌ Error", "Quantity and Threshold cannot be negative!", "error"
+            MessageDialog.show_error(
+                self.main_frame, "Error", "Quantity and Threshold cannot be negative!"
             )
             return
 
         # Prepare image path
         image_path = None
         if self.current_image_path:
-            # In production, you'd copy the image to a project folder
             image_path = self.current_image_path
 
         try:
-            # Import database module
             from logic.db import db
+
+            # Check if code already exists
+            existing = db.execute(
+                "SELECT id FROM spares WHERE code = ? AND is_active = 1",
+                (code,),
+                fetch=True,
+            )
+
+            if existing:
+                MessageDialog.show_error(
+                    self.main_frame, "Error", f"Spare code '{code}' already exists!"
+                )
+                return
 
             # Insert into database
             db.execute(
@@ -264,7 +278,7 @@ class SpareManagement:
                 INSERT INTO spares (name, code, quantity, low_stock_threshold, image_path, is_active)
                 VALUES (?, ?, ?, ?, ?, 1)
                 """,
-                (name, code, quantity, threshold, image_path),
+                (name, code, quantity, threshold, image_path, notes),
             )
 
             # Clear form
@@ -279,16 +293,18 @@ class SpareManagement:
             self.current_image_path = None
 
             # Show success message
-            self._show_message(
-                "✅ Success", f"Spare '{name}' added successfully!", "success"
+            MessageDialog.show_success(
+                self.main_frame,
+                "Success",
+                f"Spare '{name}' added successfully!\n\nCode: {code}\nQuantity: {quantity}",
             )
 
             # Refresh spares list
             self._load_spares()
 
         except Exception as e:
-            self._show_message(
-                "❌ Database Error", f"Failed to add spare: {str(e)}", "error"
+            MessageDialog.show_error(
+                self.main_frame, "Database Error", f"Failed to add spare:\n{str(e)}"
             )
 
     def _load_spares(self):

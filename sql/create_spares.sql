@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS spares (
     quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     low_stock_threshold INTEGER NOT NULL DEFAULT 5 CHECK (low_stock_threshold >= 0),
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    notes TEXT,
     image_path TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
