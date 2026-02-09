@@ -39,7 +39,7 @@ class Dashboard(ctk.CTkToplevel):
         self.state("zoomed")
 
         # Set protocol for window close
-        self.protocol("WM_DELETE_WINDOW", self.cleanup_and_exit)
+        self.protocol("WM_DELETE_WINDOW", self._cleanup_and_exit)
 
         # Center window
         self.update_idletasks()
@@ -57,10 +57,10 @@ class Dashboard(ctk.CTkToplevel):
         self._create_main_frame()
 
         # Bind close event
-        self.protocol("WM_DELETE_WINDOW", self.logout)
+        self.protocol("WM_DELETE_WINDOW", self._logout)
 
         # Load initial dashboard view
-        self.launch_dashboard()
+        self._launch_dashboard()
 
     def _create_sidebar(self):
         """Create navigation sidebar with scrollbar"""
@@ -141,13 +141,13 @@ class Dashboard(ctk.CTkToplevel):
         ).pack()
         # Navigation buttons in scrollable area
         nav_buttons = [
-            ("📊 Dashboard", self.launch_dashboard),
-            ("📦 Manage Spares", self.show_spares),
-            ("⬇️ Borrow Items", self.show_borrow),
-            ("⬆️ Return Items", self.show_return),
-            ("📜 View History", self.show_history),
-            ("📈 Reports", self.show_reports),
-            ("🔔 Alerts", self.show_alerts),
+            ("📊 Dashboard", self._launch_dashboard),
+            ("📦 Manage Spares", self._show_spares),
+            ("⬇️ Borrow Items", self._show_borrow),
+            ("⬆️ Return Items", self._show_return),
+            ("📜 View History", self._show_history),
+            ("📈 Reports", self._show_reports),
+            ("🔔 Alerts", self._show_alerts),
         ]
 
         for text, command in nav_buttons:
@@ -214,7 +214,7 @@ class Dashboard(ctk.CTkToplevel):
         logout_btn = ctk.CTkButton(
             bottom_frame,
             text="🚪 Logout",
-            command=self.logout,
+            command=self._logout,
             fg_color="#F44336",
             hover_color="#D32F2F",
             height=42,
@@ -251,7 +251,7 @@ class Dashboard(ctk.CTkToplevel):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
-    def launch_dashboard(self):
+    def _launch_dashboard(self):
         """
         Shows the dashboard CONTENT (stats, overview).
         Called when user clicks "Dashboard" in sidebar.
@@ -379,7 +379,7 @@ class Dashboard(ctk.CTkToplevel):
         for i in range(2):
             stats_frame.grid_rowconfigure(i, weight=1)
 
-    def show_spares(self):
+    def _show_spares(self):
         """Show spare management interface"""
         self.view_title.configure(text="📦 Manage Spares")
         self._clear_content()
@@ -387,7 +387,7 @@ class Dashboard(ctk.CTkToplevel):
         # Create spare management interface
         self.spare_management = SpareManagement(self.content_frame, self.user_info)
 
-    def show_borrow(self):
+    def _show_borrow(self):
         """Show borrow interface"""
         self.view_title.configure(text="⬇️ Borrow Items")
         self._clear_content()
@@ -395,7 +395,7 @@ class Dashboard(ctk.CTkToplevel):
         # Create borrow interface
         self.borrow_form = BorrowForm(self.content_frame, self.user_info)
 
-    def show_return(self):
+    def _show_return(self):
         """Show return interface"""
         self.view_title.configure(text="⬆️ Return Items")
         self._clear_content()
@@ -403,90 +403,286 @@ class Dashboard(ctk.CTkToplevel):
         # Create return interface
         self.return_form = ReturnForm(self.content_frame, self.user_info)
 
-    def show_history(self):
-        """Show movement history"""
-        self.view_title.configure(text="📜 Movement History")
+    def _show_history(self):
+        """Show comprehensive movement history with filters and borrower info"""
+        self.view_title.configure(text="📜 Complete History")
         self._clear_content()
 
-        # History interface with filters
-        filter_frame = ctk.CTkFrame(self.content_frame, height=60)
-        filter_frame.pack(fill="x", padx=20, pady=(20, 10))
+        try:
+            # Import and use the comprehensive MovementHistory class
+            from UI.history import MovementHistory
 
-        # Filter options
-        ctk.CTkLabel(filter_frame, text="Filter by:", font=("Arial", 12)).pack(
-            side="left", padx=10
-        )
+            self.history_interface = MovementHistory(self.content_frame, self.user_info)
 
-        filter_options = ["Today", "Last 7 days", "This month", "All time"]
-        filter_combo = ctk.CTkComboBox(filter_frame, values=filter_options, width=150)
-        filter_combo.pack(side="left", padx=10)
-        filter_combo.set("Today")
+        except ImportError as e:
+            # Fallback if history module isn't available yet
+            print(f"Comprehensive history module not found: {e}")
+            self._show_fallback_history()
 
-        ctk.CTkButton(filter_frame, text="🔍 Apply Filter", width=120, height=35).pack(
-            side="left", padx=10
-        )
+        except Exception as e:
+            # Handle any other errors gracefully
+            print(f"Error loading history: {e}")
+            self._show_error_history(str(e))
 
-        # History table
-        table_frame = ctk.CTkFrame(self.content_frame)
-        table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+    def _show_fallback_history(self):
+        """Show fallback history view when comprehensive module isn't available"""
+        fallback_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        fallback_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # Create scrollable history
-        history_scroll = ScrollableFrame(table_frame, height=400)
-        history_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        # Title
+        ctk.CTkLabel(
+            fallback_frame, text="📜 Movement History", font=("Arial", 22, "bold")
+        ).pack(pady=(0, 10))
 
-        # Table headers
-        headers = ["Date", "Time", "Type", "Spare", "Quantity", "User", "Notes"]
-        for col, header in enumerate(headers):
-            label = ctk.CTkLabel(
-                history_scroll,
-                text=header,
-                font=("Arial", 11, "bold"),
-                width=100 if col < 4 else 150,
-            )
-            label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+        ctk.CTkLabel(
+            fallback_frame,
+            text="Comprehensive history module is being installed...",
+            font=("Arial", 14),
+            text_color="gray",
+        ).pack(pady=(0, 20))
 
-        # Sample history data
-        sample_history = [
-            [
-                "2024-01-15",
-                "09:30",
-                "Borrow",
-                "Bolt M6",
-                10,
-                "John Doe",
-                "For machine repair",
-            ],
-            [
-                "2024-01-15",
-                "11:15",
-                "Return",
-                "Washer 10mm",
-                5,
-                "Jane Smith",
-                "Partial return",
-            ],
-            [
-                "2024-01-14",
-                "14:20",
-                "Borrow",
-                "Nut M8",
-                20,
-                "Bob Wilson",
-                "Maintenance work",
-            ],
+        # Show current simple history
+        self._show_current_history_data(fallback_frame)
+
+        # Instructions
+        info_frame = ctk.CTkFrame(fallback_frame, corner_radius=10)
+        info_frame.pack(fill="x", pady=20, padx=10)
+
+        ctk.CTkLabel(
+            info_frame,
+            text="ℹ️ What to expect in the comprehensive history:",
+            font=("Arial", 14, "bold"),
+        ).pack(pady=(10, 5), padx=10, anchor="w")
+
+        features = [
+            "✅ All borrow and return activities",
+            "✅ Borrower name tracking",
+            "✅ Filter by date range, type, status, and borrower",
+            "✅ Export to CSV functionality",
+            "✅ Real-time statistics",
+            "✅ Status indicators (Pending/Partial/Complete)",
         ]
 
-        for row, data in enumerate(sample_history, start=1):
-            for col, value in enumerate(data):
-                label = ctk.CTkLabel(
-                    history_scroll,
-                    text=str(value),
-                    font=("Arial", 10),
-                    width=100 if col < 4 else 150,
-                )
-                label.grid(row=row, column=col, padx=5, pady=2, sticky="w")
+        for feature in features:
+            ctk.CTkLabel(info_frame, text=feature, font=("Arial", 12)).pack(
+                pady=2, padx=20, anchor="w"
+            )
 
-    def show_reports(self):
+        # Quick action buttons
+        button_frame = ctk.CTkFrame(fallback_frame, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        # View Borrow History button (from borrow form)
+        ctk.CTkButton(
+            button_frame,
+            text="📋 View Simple Borrow History",
+            width=250,
+            height=40,
+            font=("Arial", 14),
+            fg_color="#2196F3",
+            command=self._show_borrow_history_dialog,
+        ).pack(pady=5)
+
+        # Refresh button
+        ctk.CTkButton(
+            button_frame,
+            text="🔄 Refresh View",
+            width=200,
+            height=35,
+            font=("Arial", 13),
+            command=self.show_history,  # Recursive refresh
+        ).pack(pady=5)
+
+    def _show_error_history(self, error_msg):
+        """Show error state for history"""
+        error_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        error_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            error_frame,
+            text="⚠️ Error Loading History",
+            font=("Arial", 24, "bold"),
+            text_color="orange",
+        ).pack(pady=20)
+
+        ctk.CTkLabel(
+            error_frame,
+            text=f"Error: {error_msg}",
+            font=("Arial", 12),
+            text_color="red",
+            wraplength=600,
+        ).pack(pady=10)
+
+        # Debug info
+        debug_frame = ctk.CTkFrame(error_frame, corner_radius=10)
+        debug_frame.pack(fill="x", pady=20, padx=50)
+
+        ctk.CTkLabel(
+            debug_frame, text="Troubleshooting:", font=("Arial", 14, "bold")
+        ).pack(pady=(10, 5), padx=10, anchor="w")
+
+        steps = [
+            "1. Make sure UI/history.py exists",
+            "2. Check that logic/db.py is working",
+            "3. Verify database has movements table",
+            "4. Restart the application",
+        ]
+
+        for step in steps:
+            ctk.CTkLabel(debug_frame, text=step, font=("Arial", 11)).pack(
+                pady=2, padx=20, anchor="w"
+            )
+
+    def _show_current_history_data(self, parent_frame):
+        """Show current actual history data from database"""
+        try:
+            from logic.db import db
+
+            # Get actual history data
+            movements = db.execute(
+                """
+                SELECT 
+                    m.movement_date,
+                    m.movement_type,
+                    m.quantity,
+                    m.notes,
+                    m.returned_quantity,
+                    s.name as spare_name,
+                    s.code as spare_code,
+                    u.full_name as user_name
+                FROM movements m
+                JOIN spares s ON m.spare_id = s.id
+                JOIN users u ON m.user_id = u.id
+                ORDER BY m.movement_date DESC
+                LIMIT 20
+                """,
+                fetch=True,
+            )
+
+            if not movements:
+                ctk.CTkLabel(
+                    parent_frame,
+                    text="No movement history found in database",
+                    font=("Arial", 14),
+                    text_color="gray",
+                ).pack(pady=20)
+                return
+
+            # Create a simple table
+            table_frame = ctk.CTkFrame(parent_frame)
+            table_frame.pack(fill="both", expand=True, pady=10)
+
+            # Create scrollable frame
+            scroll_frame = ctk.CTkScrollableFrame(table_frame, height=300)
+            scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+            # Table headers
+            headers = ["Date", "Type", "Spare", "Qty", "User", "Notes"]
+            for col, header in enumerate(headers):
+                label = ctk.CTkLabel(
+                    scroll_frame, text=header, font=("Arial", 11, "bold"), width=100
+                )
+                label.grid(row=0, column=col, padx=5, pady=10, sticky="w")
+
+            # Add data rows
+            for row, movement in enumerate(movements, start=1):
+                # Format date
+                date_str = movement["movement_date"]
+                if date_str:
+                    try:
+                        from datetime import datetime
+
+                        if "T" in date_str:
+                            date_obj = datetime.fromisoformat(
+                                date_str.replace("T", " ")
+                            )
+                        else:
+                            date_obj = datetime.strptime(
+                                date_str.split(".")[0], "%Y-%m-%d %H:%M:%S"
+                            )
+                        display_date = date_obj.strftime("%b %d\n%H:%M")
+                    except:
+                        display_date = date_str
+                else:
+                    display_date = "N/A"
+
+                # Truncate spare name
+                spare_name = movement["spare_name"]
+                if len(spare_name) > 15:
+                    spare_display = spare_name[:13] + "..."
+                else:
+                    spare_display = spare_name
+
+                spare_text = f"{spare_display}\n({movement['spare_code']})"
+
+                # Determine status
+                status_color = "white"
+                if movement["movement_type"] == "borrow":
+                    returned = movement["returned_quantity"] or 0
+                    if returned == 0:
+                        status_color = "#FF9800"  # Orange
+                    elif returned < movement["quantity"]:
+                        status_color = "#FFC107"  # Amber
+                    else:
+                        status_color = "#4CAF50"  # Green
+
+                data = [
+                    display_date,
+                    movement["movement_type"].title(),
+                    spare_text,
+                    str(movement["quantity"]),
+                    movement["user_name"],
+                    (movement["notes"] or "")[:30]
+                    + ("..." if len(movement["notes"] or "") > 30 else ""),
+                ]
+
+                for col, value in enumerate(data):
+                    label = ctk.CTkLabel(
+                        scroll_frame,
+                        text=value,
+                        font=("Arial", 10),
+                        width=100,
+                        text_color=status_color if col == 1 else "white",
+                    )
+                    label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+
+            # Show record count
+            ctk.CTkLabel(
+                parent_frame,
+                text=f"Showing {len(movements)} most recent records",
+                font=("Arial", 11),
+                text_color="gray",
+            ).pack(pady=(10, 0))
+
+        except Exception as e:
+            print(f"Error loading current history: {e}")
+            ctk.CTkLabel(
+                parent_frame,
+                text=f"Could not load history data: {str(e)}",
+                font=("Arial", 12),
+                text_color="orange",
+            ).pack(pady=10)
+
+    def _show_borrow_history_dialog(self):
+        """Show the simple borrow history dialog"""
+        try:
+            # This creates a temporary borrow form just to show its history
+            temp_frame = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+            temp_frame.pack_forget()  # Hide it
+
+            from UI.borrow_form import BorrowForm
+
+            borrow_form = BorrowForm(temp_frame, self.user_info)
+            borrow_form.show_borrow_history()
+
+        except Exception as e:
+            from UI.components.message_dialog import MessageDialog
+
+            MessageDialog.show_error(
+                self.content_frame, "Error", f"Cannot show borrow history:\n{str(e)}"
+            )
+
+    def _show_reports(self):
         """Show reports"""
         self.view_title.configure(text="📈 Reports")
         self._clear_content()
@@ -542,8 +738,7 @@ class Dashboard(ctk.CTkToplevel):
         for i in range(3):
             reports_frame.grid_columnconfigure(i, weight=1)
 
-    # Other methods remain the same as before...
-    def show_alerts(self):
+    def _show_alerts(self):
         """Show alerts"""
         self.view_title.configure(text="🔔 Alerts")
         self._clear_content()
@@ -556,7 +751,7 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def show_users(self):
+    def _show_users(self):
         """Show user management (admin only)"""
         self.view_title.configure(text="👥 User Management")
         self._clear_content()
@@ -569,7 +764,7 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def show_backup(self):
+    def _show_backup(self):
         """Show backup system (admin only)"""
         self.view_title.configure(text="💾 Backup System")
         self._clear_content()
@@ -582,7 +777,7 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def show_settings(self):
+    def _show_settings(self):
         """Show settings (admin only)"""
         self.view_title.configure(text="⚙️ System Settings")
         self._clear_content()
@@ -595,7 +790,7 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def show_audit_log(self):
+    def _show_audit_log(self):
         """Show audit log (admin only)"""
         self.view_title.configure(text="📋 Audit Log")
         self._clear_content()
@@ -608,7 +803,7 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def show_sync_tools(self):
+    def _show_sync_tools(self):
         """Show sync tools (admin only)"""
         self.view_title.configure(text="🔄 Sync Tools")
         self._clear_content()
@@ -621,7 +816,7 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def show_maintenance(self):
+    def _show_maintenance(self):
         """Show maintenance tools (admin only)"""
         self.view_title.configure(text="🔧 Maintenance")
         self._clear_content()
@@ -634,20 +829,20 @@ class Dashboard(ctk.CTkToplevel):
         )
         placeholder.pack(pady=100)
 
-    def add_spare(self):
+    def _add_spare(self):
         """Add new spare"""
         print("Add spare functionality to be implemented")
 
-    def process_borrow(self):
+    def _process_borrow(self):
         """Process borrow request"""
         print("Borrow functionality to be implemented")
 
-    def process_return(self):
+    def _process_return(self):
         """Process return request"""
         print("Return functionality to be implemented")
 
-    def logout(self):
-        """Clean logout without Tkinter errors"""
+    def _logout(self):
+        """logout"""
         print("🔄 Logging out...")
 
         # Cancel all pending after() events
@@ -680,6 +875,43 @@ class Dashboard(ctk.CTkToplevel):
 
         sys.exit(0)
 
-    def cleanup_and_exit(self):
+    def _show_simple_history(self):
+        """Fallback simple history view"""
+        # Create a simple frame as placeholder
+        placeholder = ctk.CTkFrame(self.content_frame, fg_color="transparent")
+        placeholder.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            placeholder, text="📜 History View", font=("Arial", 24, "bold")
+        ).pack(pady=20)
+
+        ctk.CTkLabel(
+            placeholder,
+            text="Comprehensive history view is loading...",
+            font=("Arial", 14),
+            text_color="gray",
+        ).pack()
+
+        # You could also reuse the borrow form's history dialog here
+        ctk.CTkButton(
+            placeholder,
+            text="View Borrow History",
+            width=200,
+            height=40,
+            font=("Arial", 14),
+            command=self._show_borrow_history_simple,
+        ).pack(pady=20)
+
+    def _show_simple_borrow_history(self):
+        """Show simple borrow history (reusing borrow form's method)"""
+        # This would show the same dialog as the borrow form button
+        from UI.borrow_form import BorrowForm
+
+        # Create a temporary borrow form just to call its history method
+        temp_frame = ctk.CTkFrame(self.content_frame)
+        temp_form = BorrowForm(temp_frame, self.user_info)
+        temp_form.show_borrow_history()
+
+    def _cleanup_and_exit(self):
         """Clean up before exiting"""
         self.logout()

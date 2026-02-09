@@ -247,29 +247,63 @@ class ReturnForm:
         # Get quantity to return
         qty_text = self.return_qty_entry.get().strip()
         if not qty_text:
-            self._show_message("Error", "Please enter quantity to return")
+            from UI.components.message_dialog import MessageDialog
+
+            MessageDialog.show_error(dialog, "Error", "Please enter quantity to return")
             return
 
         try:
             return_qty = int(qty_text)
             if return_qty <= 0:
-                self._show_message("Error", "Quantity must be greater than 0")
+                MessageDialog.show_error(
+                    dialog, "Error", "Quantity must be greater than 0"
+                )
                 return
 
             remaining_qty = item["remaining_qty"]
             if return_qty > remaining_qty:
-                self._show_message(
-                    "Error", f"Cannot return more than remaining ({remaining_qty})"
+                MessageDialog.show_error(
+                    dialog,
+                    "Error",
+                    f"Cannot return more than remaining ({remaining_qty})",
                 )
                 return
         except ValueError:
-            self._show_message("Error", "Quantity must be a number")
+            MessageDialog.show_error(dialog, "Error", "Quantity must be a number")
             return
 
         # Get notes
         notes = self.return_notes.get("1.0", "end-1c").strip()
 
         try:
+            # Get the original borrower name from the borrow movement
+            borrow_record = db.execute(
+                """
+                SELECT borrower_name, notes 
+                FROM movements 
+                WHERE id = ?
+                """,
+                (item["movement_id"],),
+                fetch=True,
+            )
+
+            # Extract borrower name
+            borrower_name = "Unknown"
+            if borrow_record:
+                record = borrow_record[0]
+                if record.get("borrower_name"):
+                    borrower_name = record["borrower_name"]
+                elif record.get("notes"):
+                    # Try to parse from old notes format
+                    notes_text = record["notes"] or ""
+                    if "borrowed by" in notes_text.lower():
+                        # Extract from pattern like "Borrowed by John Doe"
+                        import re
+
+                        match = re.search(r"[Bb]orrowed by\s+(.+)", notes_text)
+                        if match:
+                            borrower_name = match.group(1).strip()
+
             # Start transaction
             # 1. Update spare quantity
             db.execute(
@@ -277,46 +311,69 @@ class ReturnForm:
                 (return_qty, item["spare_id"]),
             )
 
-            # 2. Update movement record
+            # 2. Update original borrow movement record
             current_returned = item["returned_quantity"] or 0
             new_returned = current_returned + return_qty
 
             db.execute(
                 """
                 UPDATE movements 
-                SET returned_quantity = ?, 
+                SET returned_quantity = ?,
                     return_date = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
                 (new_returned, item["movement_id"]),
             )
 
-            # 3. Create return movement record if fully returned
-            if new_returned >= item["borrowed_qty"]:
-                db.execute(
-                    """
-                    INSERT INTO movements (spare_id, user_id, quantity, movement_type, notes)
-                    VALUES (?, ?, ?, 'return', ?)
-                    """,
-                    (
-                        item["spare_id"],
-                        self.user_info.get("id", 1),
-                        return_qty,
-                        notes or f"Full return of {item['spare_name']}",
-                    ),
-                )
+            # 3. Create return movement record
+            # Determine if this is full or partial return
+            is_full_return = new_returned >= item["borrowed_qty"]
+            return_type = "full" if is_full_return else "partial"
+
+            # Create return notes if none provided
+            if not notes:
+                notes = f"{return_type} return of {item['spare_name']}"
+                if not is_full_return:
+                    notes += f" ({return_qty} of {item['borrowed_qty']} returned)"
+
+            # Insert return movement
+            db.execute(
+                """
+                INSERT INTO movements 
+                (spare_id, user_id, quantity, movement_type, notes, borrower_name, returned_quantity)
+                VALUES (?, ?, ?, 'return', ?, ?, ?)
+                """,
+                (
+                    item["spare_id"],
+                    self.user_info.get("id", 1),
+                    return_qty,
+                    notes,
+                    borrower_name,  # Store borrower name
+                    return_qty,  # For returns, this equals quantity
+                ),
+            )
 
             # Show success and close dialog
             dialog.destroy()
-            self._show_message(
-                "Success", f"Successfully returned {return_qty} of {item['spare_name']}"
-            )
 
             # Refresh the list
             self._refresh_list()
 
+            # Show success message
+            MessageDialog.show_success(
+                self.main_frame,
+                "Success",
+                f"✅ Return successful!\n\n"
+                f"Item: {item['spare_name']}\n"
+                f"Quantity: {return_qty}\n"
+                f"Borrower: {borrower_name}\n"
+                f"Type: {return_type.title()} Return",
+            )
+
         except Exception as e:
-            self._show_message("Error", f"Database error: {str(e)}")
+            MessageDialog.show_error(
+                dialog, "Database Error", f"Failed to process return:\n{str(e)}"
+            )
 
     def _refresh_list(self):
         """Refresh the borrowed items list"""

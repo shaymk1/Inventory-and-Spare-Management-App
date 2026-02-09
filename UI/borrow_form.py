@@ -305,12 +305,17 @@ class BorrowForm:
             # 2. Log movement
             db.execute(
                 """
-                INSERT INTO movements (spare_id, user_id, quantity, movement_type, notes)
-                VALUES (?, 1, ?, 'borrow', ?)
+                INSERT INTO movements (spare_id, user_id, quantity, movement_type, notes, borrower_name)
+                VALUES (?, ?, ?, 'borrow', ?, ?)
                 """,
-                (spare_id, borrow_qty, notes or f"Borrowed by {borrower}"),
+                (
+                    spare_id,
+                    self.user_info.get("id", 1),  # Use actual user ID
+                    borrow_qty,
+                    notes or f"Borrowed by {borrower}",
+                    borrower,  # Borrower name
+                ),
             )
-
             # Show success message
             MessageDialog.show_success(
                 self.main_frame,
@@ -364,7 +369,8 @@ class BorrowForm:
                     m.quantity,
                     m.movement_date,
                     m.notes,
-                    m.returned_quantity
+                    m.returned_quantity,
+                    m.borrower_name
                 FROM movements m
                 JOIN spares s ON m.spare_id = s.id
                 WHERE m.movement_type = 'borrow'
@@ -372,6 +378,11 @@ class BorrowForm:
                 LIMIT 50
                 """,
                 fetch=True,
+            )
+
+            #  the query to debug borrowe_name:
+            print(
+                f"DEBUG: First record borrower_name: {history[0].get('borrower_name') if history else 'No history'}"
             )
 
             if not history:
@@ -409,7 +420,7 @@ class BorrowForm:
             scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
             # Table headers
-            headers = ["Date", "Spare", "Quantity", "Returned", "Status", "Notes"]
+            headers = ["Date", "Spare", "Quantity", "Borrower", "Returned", "Status", "Notes"]
             for col, header in enumerate(headers):
                 label = ctk.CTkLabel(
                     scroll_frame, text=header, font=("Arial", 12, "bold"), width=120
@@ -448,10 +459,10 @@ class BorrowForm:
                     display_date,
                     f"{record['spare_name']}\n({record['spare_code']})",
                     str(borrowed),
+                    record.get('borrower_name', 'N/A'),  # ← ADD BORROWER HERE
                     str(returned),
                     status,
-                    (record["notes"] or "")[:30]
-                    + ("..." if len(record["notes"] or "") > 30 else ""),
+                    (record["notes"] or "")[:30] + ("..." if len(record["notes"] or "") > 30 else ""),
                 ]
 
                 for col, value in enumerate(data):

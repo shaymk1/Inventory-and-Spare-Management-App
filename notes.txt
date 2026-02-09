@@ -3127,3 +3127,88 @@ old add_spare method in the spare_form.py:
                 "Database Error",
                 f"Failed to process borrow:\n{str(e)}"
             )
+
+
+#####ol _show_history in the dashboard.py:
+ def _show_history(self):
+        """Show movement history"""
+        self.view_title.configure(text="📜 Movement History")
+        self._clear_content()
+
+        # History interface with filters
+        filter_frame = ctk.CTkFrame(self.content_frame, height=60)
+        filter_frame.pack(fill="x", padx=20, pady=(20, 10))
+
+        # Filter options
+        ctk.CTkLabel(filter_frame, text="Filter by:", font=("Arial", 12)).pack(
+            side="left", padx=10
+        )
+
+        filter_options = ["Today", "Last 7 days", "This month", "All time"]
+        filter_combo = ctk.CTkComboBox(filter_frame, values=filter_options, width=150)
+        filter_combo.pack(side="left", padx=10)
+        filter_combo.set("Today")
+
+        ctk.CTkButton(filter_frame, text="🔍 Apply Filter", width=120, height=35).pack(
+            side="left", padx=10
+        )
+
+        # History table
+        table_frame = ctk.CTkFrame(self.content_frame)
+        table_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+        # Create scrollable history
+        history_scroll = ScrollableFrame(table_frame, height=400)
+        history_scroll.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Table headers
+        headers = ["Date", "Time", "Type", "Spare", "Quantity", "User", "Notes"]
+        for col, header in enumerate(headers):
+            label = ctk.CTkLabel(
+                history_scroll,
+                text=header,
+                font=("Arial", 11, "bold"),
+                width=100 if col < 4 else 150,
+            )
+            label.grid(row=0, column=col, padx=5, pady=5, sticky="w")
+
+        # Sample history data
+        sample_history = [
+            [
+                "2024-01-15",
+                "09:30",
+                "Borrow",
+                "Bolt M6",
+                10,
+                "John Doe",
+                "For machine repair",
+            ],
+            [
+                "2024-01-15",
+                "11:15",
+                "Return",
+                "Washer 10mm",
+                5,
+                "Jane Smith",
+                "Partial return",
+            ],
+            [
+                "2024-01-14",
+                "14:20",
+                "Borrow",
+                "Nut M8",
+                20,
+                "Bob Wilson",
+                "Maintenance work",
+            ],
+        ]
+
+        for row, data in enumerate(sample_history, start=1):
+            for col, value in enumerate(data):
+                label = ctk.CTkLabel(
+                    history_scroll,
+                    text=str(value),
+                    font=("Arial", 10),
+                    width=100 if col < 4 else 150,
+                )
+                label.grid(row=row, column=col, padx=5, pady=2, sticky="w")

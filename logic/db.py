@@ -29,20 +29,67 @@ class Database:
         cursor = conn.cursor()
 
         try:
-            # Check if spares table has 'notes' column
+            # 1. Check and update spares table
             cursor.execute("PRAGMA table_info(spares)")
             columns = cursor.fetchall()
             column_names = [col[1] for col in columns]  # Column name is at index 1
 
-            # Add missing columns
+            # Add missing columns to spares
             if "notes" not in column_names:
                 print("🔄 Adding missing column: notes to spares table")
                 cursor.execute("ALTER TABLE spares ADD COLUMN notes TEXT")
+
+            # 2. Check and update movements table for borrower_name
+            cursor.execute("PRAGMA table_info(movements)")
+            movements_columns = cursor.fetchall()
+            movements_column_names = [col[1] for col in movements_columns]
+
+            # Add borrower_name if missing
+            if "borrower_name" not in movements_column_names:
+                print("🔄 Adding missing column: borrower_name to movements table")
+                cursor.execute("ALTER TABLE movements ADD COLUMN borrower_name TEXT")
+
+                # Optional: Backfill existing borrow records
+                try:
+                    cursor.execute(
+                        """
+                    UPDATE movements 
+                    SET borrower_name = 
+                        CASE 
+                            WHEN movement_type = 'borrow' AND notes LIKE '%Borrowed by%' THEN
+                                TRIM(SUBSTR(notes, INSTR(notes, 'Borrowed by') + 12))
+                            WHEN movement_type = 'borrow' AND notes LIKE '%borrowed by%' THEN
+                                TRIM(SUBSTR(notes, INSTR(notes, 'borrowed by') + 12))
+                            ELSE NULL
+                        END
+                    """
+                    )
+                    updated = cursor.rowcount
+                    print(
+                        f"✅ Backfilled borrower names for {updated} existing borrow records"
+                    )
+                except Exception as backfill_error:
+                    print(f"⚠️ Could not backfill borrower names: {backfill_error}")
+
+            # 3. Also check for any other missing columns we might need
+            # Add returned_quantity if missing (for backward compatibility)
+            if "returned_quantity" not in movements_column_names:
+                print("🔄 Adding missing column: returned_quantity to movements table")
+                cursor.execute(
+                    "ALTER TABLE movements ADD COLUMN returned_quantity INTEGER DEFAULT 0"
+                )
+
+            # Add return_date if missing
+            if "return_date" not in movements_column_names:
+                print("🔄 Adding missing column: return_date to movements table")
+                cursor.execute("ALTER TABLE movements ADD COLUMN return_date TIMESTAMP")
 
             conn.commit()
             print("✅ Database migration complete")
 
         except Exception as e:
+            # This might be normal if tables don't exist yet (first run)
+            # The tables will be created with correct schema in setup_tables()
             print(f"⚠️ Migration error (may be normal if tables don't exist yet): {e}")
             conn.rollback()
         finally:
