@@ -278,7 +278,7 @@ class SpareManagement:
                 INSERT INTO spares (name, code, quantity, low_stock_threshold, image_path, notes, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, 1)  
                 """,
-                (name, code, quantity, threshold, image_path, notes),  
+                (name, code, quantity, threshold, image_path, notes),
             )
 
             # Clear form
@@ -319,30 +319,58 @@ class SpareManagement:
 
             # Query spares
             spares = db.execute(
-                "SELECT id, name, code, quantity, low_stock_threshold FROM spares WHERE is_active = 1 ORDER BY name",
+                "SELECT id, name, code, quantity, low_stock_threshold, notes FROM spares WHERE is_active = 1 ORDER BY name",
                 fetch=True,
             )
 
             if not spares:
-                # No spares message
+                # No spares message (same as before)
+                no_spares_frame = ctk.CTkFrame(
+                    self.spares_table_frame, fg_color="transparent"
+                )
+                no_spares_frame.pack(pady=50, expand=True)
+
                 ctk.CTkLabel(
-                    self.spares_table_frame,
-                    text="No spares found. Add your first spare!",
-                    font=("Arial", 14),
+                    no_spares_frame,
+                    text="📦 No spares found",
+                    font=("Arial", 16),
                     text_color="gray",
-                ).pack(pady=50)
+                ).pack()
+
+                ctk.CTkLabel(
+                    no_spares_frame,
+                    text="Click 'Add New' tab to create your first spare!",
+                    font=("Arial", 12),
+                    text_color="gray",
+                ).pack(pady=10)
+
+                ctk.CTkButton(
+                    no_spares_frame,
+                    text="➕ Add New Spare",
+                    width=150,
+                    height=35,
+                    font=("Arial", 12),
+                    fg_color="#4CAF50",
+                    command=lambda: self.tabview.set("Add New"),
+                ).pack(pady=10)
                 return
 
-            # Create table headers
-            headers = ["ID", "Name", "Code", "Quantity", "Low Stock", "Status"]
-            for col, header in enumerate(headers):
-                label = ctk.CTkLabel(
+            # Define column widths (FIXED widths for alignment)
+            col_widths = [50, 200, 100, 80, 100, 100]
+
+            # Create header row IN THE SAME GRID as data rows
+            headers = ["ID", "Name", "Code", "Qty", "Threshold", "Status"]
+            for col, (header, width) in enumerate(zip(headers, col_widths)):
+                header_label = ctk.CTkLabel(
                     self.spares_table_frame,
                     text=header,
                     font=("Arial", 12, "bold"),
-                    width=100 if col < 2 else 80,
+                    width=width,
+                    anchor="w",
+                    fg_color="#2b2b2b",
+                    corner_radius=4,
                 )
-                label.grid(row=0, column=col, padx=5, pady=10, sticky="w")
+                header_label.grid(row=0, column=col, padx=2, pady=(0, 10), sticky="w")
 
             # Add spares rows
             for row, spare in enumerate(spares, start=1):
@@ -352,42 +380,404 @@ class SpareManagement:
 
                 if quantity == 0:
                     status = "❌ Out of Stock"
-                    status_color = "red"
+                    status_color = "#F44336"
                 elif quantity <= threshold:
                     status = "⚠️ Low Stock"
-                    status_color = "orange"
+                    status_color = "#FF9800"
                 else:
                     status = "✅ In Stock"
-                    status_color = "green"
+                    status_color = "#4CAF50"
 
-                # Display row
+                # Alternate row colors
+                row_bg = "#1a1a1a" if row % 2 == 0 else "#2b2b2b"
+
+                # Display data in each column (SAME GRID as headers)
                 data = [
-                    spare["id"],
-                    spare["name"][:20] + ("..." if len(spare["name"]) > 20 else ""),
+                    str(spare["id"]),
+                    spare["name"][:30] + ("..." if len(spare["name"]) > 30 else ""),
                     spare["code"],
                     str(spare["quantity"]),
                     str(spare["low_stock_threshold"]),
                     status,
                 ]
 
-                for col, value in enumerate(data):
+                # Create clickable labels for each column
+                for col, (value, width) in enumerate(zip(data, col_widths)):
                     label = ctk.CTkLabel(
                         self.spares_table_frame,
                         text=value,
                         font=("Arial", 11),
-                        width=100 if col < 2 else 80,
+                        width=width,
+                        height=32,
+                        anchor="w",
                         text_color=status_color if col == 5 else "white",
+                        fg_color=row_bg,
+                        corner_radius=0,
+                        cursor="hand2",
                     )
-                    label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+                    label.grid(row=row, column=col, padx=2, pady=1, sticky="w")
+
+                    # Make label clickable
+                    label.bind(
+                        "<Button-1>", lambda e, s=spare: self._open_edit_dialog(s)
+                    )
+
+                    # Hover effect
+                    def on_enter(e, lbl=label, bg=row_bg):
+                        lbl.configure(fg_color="#3a3a3a")
+
+                    def on_leave(e, lbl=label, bg=row_bg):
+                        lbl.configure(fg_color=bg)
+
+                    label.bind("<Enter>", on_enter)
+                    label.bind("<Leave>", on_leave)
+
+            # Configure grid columns to maintain widths
+            for col, width in enumerate(col_widths):
+                self.spares_table_frame.grid_columnconfigure(
+                    col, minsize=width, weight=0
+                )
+
+            # Add instruction label
+            instruction_label = ctk.CTkLabel(
+                self.spares_table_frame,
+                text="💡 Click on any spare to edit or delete",
+                font=("Arial", 11),
+                text_color="#888888",
+            )
+            instruction_label.grid(
+                row=len(spares) + 1, column=0, columnspan=6, pady=(15, 5)
+            )
 
         except Exception as e:
             print(f"Error loading spares: {e}")
+            error_frame = ctk.CTkFrame(self.spares_table_frame, fg_color="transparent")
+            error_frame.pack(pady=50)
+
             ctk.CTkLabel(
-                self.spares_table_frame,
-                text=f"Error loading spares: {str(e)}",
-                font=("Arial", 12),
-                text_color="orange",
-            ).pack(pady=50)
+                error_frame,
+                text=f"❌ Error loading spares: {str(e)}",
+                font=("Arial", 14),
+                text_color="#F44336",
+            ).pack()
+
+            ctk.CTkButton(
+                error_frame,
+                text="🔄 Try Again",
+                width=120,
+                height=35,
+                command=self._load_spares,
+            ).pack(pady=10)
+
+    def _open_edit_dialog(self, spare):
+        """Open dialog to edit or delete spare"""
+        # Create dialog
+        dialog = ctk.CTkToplevel(self.main_frame)
+        dialog.title(f"Edit/Delete: {spare['name']}")
+        dialog.geometry("600x650")  # Slightly larger
+        dialog.resizable(False, False)
+        dialog.transient(self.main_frame)
+        dialog.grab_set()
+
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (650 // 2)
+        dialog.geometry(f"+{x}+{y}")
+
+        # === USE SCROLLABLE FRAME ===
+        main_frame = ctk.CTkScrollableFrame(dialog, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=25, pady=25)
+
+        # Title with icon
+        title_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        title_frame.pack(pady=(0, 20))
+
+        ctk.CTkLabel(title_frame, text="✏️", font=("Arial", 32)).pack()
+        ctk.CTkLabel(title_frame, text=spare["name"], font=("Arial", 20, "bold")).pack(
+            pady=(5, 0)
+        )
+        ctk.CTkLabel(
+            title_frame,
+            text=f"ID: {spare['id']}",
+            font=("Arial", 12),
+            text_color="gray",
+        ).pack(pady=(5, 0))
+
+        # Edit form
+        form_frame = ctk.CTkFrame(main_frame, corner_radius=10)
+        form_frame.pack(fill="x", pady=10)
+
+        # Configure grid
+        form_frame.grid_columnconfigure(1, weight=1)
+
+        # === ROWS START HERE ===
+        row = 0
+
+        # Spare Name
+        ctk.CTkLabel(form_frame, text="Spare Name:", font=("Arial", 13, "bold")).grid(
+            row=row, column=0, padx=20, pady=15, sticky="w"
+        )
+        name_var = ctk.StringVar(value=spare["name"])
+        name_entry = ctk.CTkEntry(
+            form_frame, width=300, textvariable=name_var, font=("Arial", 13)
+        )
+        name_entry.grid(row=row, column=1, padx=20, pady=15, sticky="w")
+
+        # Spare Code
+        row += 1
+        ctk.CTkLabel(form_frame, text="Spare Code:", font=("Arial", 13, "bold")).grid(
+            row=row, column=0, padx=20, pady=15, sticky="w"
+        )
+        code_var = ctk.StringVar(value=spare["code"])
+        code_entry = ctk.CTkEntry(
+            form_frame, width=200, textvariable=code_var, font=("Arial", 13)
+        )
+        code_entry.grid(row=row, column=1, padx=20, pady=15, sticky="w")
+
+        # Current Quantity
+        row += 1
+        ctk.CTkLabel(
+            form_frame, text="Current Quantity:", font=("Arial", 13, "bold")
+        ).grid(row=row, column=0, padx=20, pady=15, sticky="w")
+        quantity_var = ctk.StringVar(value=str(spare["quantity"]))
+        quantity_entry = ctk.CTkEntry(
+            form_frame, width=150, textvariable=quantity_var, font=("Arial", 13)
+        )
+        quantity_entry.grid(row=row, column=1, padx=20, pady=15, sticky="w")
+
+        # Low Stock Threshold
+        row += 1
+        ctk.CTkLabel(
+            form_frame, text="Low Stock Alert:", font=("Arial", 13, "bold")
+        ).grid(row=row, column=0, padx=20, pady=15, sticky="w")
+        threshold_var = ctk.StringVar(value=str(spare["low_stock_threshold"]))
+        threshold_entry = ctk.CTkEntry(
+            form_frame, width=150, textvariable=threshold_var, font=("Arial", 13)
+        )
+        threshold_entry.grid(row=row, column=1, padx=20, pady=15, sticky="w")
+
+        # Notes
+        row += 1
+        ctk.CTkLabel(form_frame, text="Notes:", font=("Arial", 13, "bold")).grid(
+            row=row, column=0, padx=20, pady=15, sticky="nw"
+        )
+        notes_text = ctk.CTkTextbox(
+            form_frame, width=300, height=80, font=("Arial", 12)
+        )
+        notes_text.grid(row=row, column=1, padx=20, pady=15, sticky="w")
+
+        # Load existing notes
+        if spare.get("notes"):
+            notes_text.insert("1.0", spare["notes"])
+
+        # Buttons - NOW IN SCROLLABLE FRAME, WILL BE VISIBLE
+        button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        button_frame.pack(pady=25)
+
+        # Update button
+        ctk.CTkButton(
+            button_frame,
+            text="💾 Update Spare",
+            width=150,
+            height=45,
+            font=("Arial", 14, "bold"),
+            fg_color="#2196F3",
+            command=lambda: self._update_spare(
+                spare["id"],
+                spare["name"],
+                spare["code"],
+                name_var.get(),
+                code_var.get(),
+                quantity_var.get(),
+                threshold_var.get(),
+                notes_text.get("1.0", "end-1c"),
+                dialog,
+            ),
+        ).pack(side="left", padx=10)
+
+        # Delete button
+        ctk.CTkButton(
+            button_frame,
+            text="🗑️ Delete Spare",
+            width=150,
+            height=45,
+            font=("Arial", 14, "bold"),
+            fg_color="#F44336",
+            hover_color="#D32F2F",
+            command=lambda: self._confirm_delete(spare["id"], spare["name"], dialog),
+        ).pack(side="left", padx=10)
+
+        # Cancel button
+        ctk.CTkButton(
+            button_frame,
+            text="🔙 Cancel",
+            width=100,
+            height=45,
+            font=("Arial", 14),
+            fg_color="gray",
+            command=dialog.destroy,
+        ).pack(side="left", padx=10)
+
+    def _update_spare(
+        self,
+        spare_id,
+        original_name,
+        original_code,
+        new_name,
+        new_code,
+        qty_str,
+        threshold_str,
+        notes,
+        dialog,
+    ):
+        """Update spare details including name, code, quantity, threshold and notes"""
+        try:
+
+            from UI.components.message_dialog import MessageDialog
+
+            # Validate name
+            if not new_name or not new_name.strip():
+                MessageDialog.show_error(dialog, "Error", "Spare name cannot be empty")
+                return
+
+            # Validate code
+            if not new_code or not new_code.strip():
+                MessageDialog.show_error(dialog, "Error", "Spare code cannot be empty")
+                return
+
+            # Validate quantity
+            try:
+                quantity = int(qty_str)
+                if quantity < 0:
+                    MessageDialog.show_error(
+                        dialog, "Error", "Quantity cannot be negative"
+                    )
+                    return
+            except ValueError:
+                MessageDialog.show_error(dialog, "Error", "Quantity must be a number")
+                return
+
+            # Validate threshold
+            try:
+                threshold = int(threshold_str)
+                if threshold < 0:
+                    MessageDialog.show_error(
+                        dialog, "Error", "Threshold cannot be negative"
+                    )
+                    return
+            except ValueError:
+                MessageDialog.show_error(dialog, "Error", "Threshold must be a number")
+                return
+
+            # Check if code already exists (only if code was changed)
+            from logic.db import db
+
+            if new_code != original_code:
+                existing = db.execute(
+                    "SELECT id FROM spares WHERE code = ? AND id != ? AND is_active = 1",
+                    (new_code.strip(), spare_id),
+                    fetch=True,
+                )
+                if existing:
+                    MessageDialog.show_error(
+                        dialog,
+                        "Error",
+                        f"Spare code '{new_code}' already exists!\nPlease use a different code.",
+                    )
+                    return
+
+            # UPDATE DATABASE - 6 placeholders, 6 parameters
+            db.execute(
+                """
+                UPDATE spares 
+                SET name = ?, 
+                    code = ?,
+                    quantity = ?, 
+                    low_stock_threshold = ?, 
+                    notes = ?, 
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (
+                    new_name.strip(),  # 1. name
+                    new_code.strip(),  # 2. code
+                    quantity,  # 3. quantity
+                    threshold,  # 4. threshold
+                    notes,  # 5. notes
+                    spare_id,  # 6. id for WHERE clause
+                ),
+            )
+
+            # Close dialog
+            dialog.destroy()
+
+            # Show success message
+            MessageDialog.show_success(
+                self.main_frame,
+                "Success",
+                f"✅ {new_name} updated successfully!\n\n"
+                f"Code: {new_code}\n"
+                f"Quantity: {quantity}\n"
+                f"Alert Threshold: {threshold}",
+            )
+
+            # Refresh the spares list
+            self._load_spares()
+
+        except Exception as e:
+            MessageDialog.show_error(dialog, "Error", f"Failed to update: {str(e)}")
+
+    def _confirm_delete(self, spare_id, spare_name, dialog):
+        """Confirm before deleting spare"""
+        from UI.components.message_dialog import MessageDialog
+
+        def delete_spare():
+            try:
+                from logic.db import db
+
+                # Check if spare has any movements
+                movements = db.execute(
+                    "SELECT COUNT(*) as count FROM movements WHERE spare_id = ?",
+                    (spare_id,),
+                    fetch=True,
+                )
+
+                if movements and movements[0]["count"] > 0:
+                    # Soft delete - mark as inactive (preserves history)
+                    db.execute(
+                        "UPDATE spares SET is_active = 0 WHERE id = ?", (spare_id,)
+                    )
+                    delete_type = "archived"
+                else:
+                    # Hard delete - no history, safe to remove
+                    db.execute("DELETE FROM spares WHERE id = ?", (spare_id,))
+                    delete_type = "deleted"
+
+                # Close both dialogs
+                dialog.destroy()
+
+                # Show success message
+                MessageDialog.show_success(
+                    self.main_frame,
+                    "Success",
+                    f"✅ {spare_name} has been {delete_type} successfully!",
+                )
+
+                # Refresh the spares list
+                self._load_spares()
+
+            except Exception as e:
+                MessageDialog.show_error(
+                    self.main_frame, "Error", f"Failed to delete: {str(e)}"
+                )
+
+        MessageDialog.show_confirm(
+            dialog,
+            "Confirm Delete",
+            f"Are you sure you want to delete '{spare_name}'?\n\nThis action cannot be undone.",
+            delete_spare,
+        )
 
     def _search_spares(self):
         """Search spares by name or code"""
