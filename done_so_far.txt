@@ -1,0 +1,12 @@
+What has be done so far:
+
+
+- Borrow items → Saves borrower name to database
+
+- Simple borrow history → Shows borrower names in table
+
+- Return items → Preserves borrower names
+
+- Comprehensive history → Full audit trail with borrower filtering
+
+- Database migration → Auto-adds column to existing databases
