@@ -633,9 +633,6 @@ class SpareManagement:
     ):
         """Update spare details including name, code, quantity, threshold and notes"""
         try:
-
-            from UI.components.message_dialog import MessageDialog
-
             # Validate name
             if not new_name or not new_name.strip():
                 MessageDialog.show_error(dialog, "Error", "Spare name cannot be empty")
