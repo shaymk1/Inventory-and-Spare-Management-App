@@ -6,7 +6,8 @@ Add, Edit, Delete, and View spares
 import customtkinter as ctk
 import os
 from tkinter import filedialog
-from PIL import Image, ImageTk  # for image handling
+
+# from PIL import Image, ImageTk  # for image handling
 from UI.components.message_dialog import MessageDialog
 
 
@@ -27,26 +28,25 @@ class SpareManagement:
         self.main_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
         self.main_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # Create tabbed interface
+        # Create tabbed interface (ONLY 2 TABS NOW)
         self._create_tabview()
 
         # Load spares data
         self._load_spares()
 
     def _create_tabview(self):
-        """Create tabbed interface for different functions"""
+        """Create tabbed interface for different functions - EDIT TAB REMOVED"""
         self.tabview = ctk.CTkTabview(self.main_frame)
         self.tabview.pack(fill="both", expand=True)
 
-        # Add tabs
+        # Add ONLY 2 tabs now (removed Edit/Delete)
         self.tabview.add("View Spares")
         self.tabview.add("Add New")
-        self.tabview.add("Edit/Delete")
 
         # Setup each tab
         self._setup_view_tab()
         self._setup_add_tab()
-        self._setup_edit_tab()
+        # NO MORE EDIT TAB!
 
     def _setup_view_tab(self):
         """Setup the 'View Spares' tab"""
@@ -72,6 +72,17 @@ class SpareManagement:
         ctk.CTkButton(
             search_frame, text="🔄 Refresh", width=80, command=self._load_spares
         ).pack(side="left")
+
+        # Instruction label
+        instruction_frame = ctk.CTkFrame(view_frame, fg_color="transparent", height=30)
+        instruction_frame.pack(fill="x", pady=(5, 10))
+
+        ctk.CTkLabel(
+            instruction_frame,
+            text="💡 Double-click any spare to edit or delete",
+            font=("Arial", 12),
+            text_color="#4FC3F7",
+        ).pack()
 
         # Spares table (using scrollable frame)
         table_frame = ctk.CTkFrame(view_frame)
@@ -189,22 +200,7 @@ class SpareManagement:
         # Configure grid weights
         fields_container.grid_columnconfigure(1, weight=1)
 
-    def _setup_edit_tab(self):
-        """Setup the 'Edit/Delete' tab"""
-        edit_frame = self.tabview.tab("Edit/Delete")
-
-        ctk.CTkLabel(
-            edit_frame, text="Select a spare to edit or delete", font=("Arial", 14)
-        ).pack(pady=20)
-
-        # Will implement edit/delete functionality in next step
-        placeholder = ctk.CTkLabel(
-            edit_frame,
-            text="Edit/Delete functionality coming soon...",
-            font=("Arial", 12),
-            text_color="gray",
-        )
-        placeholder.pack(pady=100)
+    # The _setup_edit_tab method has been REMOVED entirely
 
     def _browse_image(self):
         """Open file dialog to select image"""
@@ -228,6 +224,7 @@ class SpareManagement:
         quantity = self.quantity_entry.get().strip()
         threshold = self.threshold_entry.get().strip()
         notes = self.notes_entry.get().strip()
+        category = self.category_var.get()
 
         # Basic validation
         if not name or not code:
@@ -272,18 +269,20 @@ class SpareManagement:
                 )
                 return
 
-            # Insert into database
+            # Insert into database (add category to notes or create new column?)
+            # For now, prepend category to notes
+            full_notes = f"[{category}] {notes}" if notes else f"[{category}]"
+
             db.execute(
                 """
                 INSERT INTO spares (name, code, quantity, low_stock_threshold, image_path, notes, is_active)
                 VALUES (?, ?, ?, ?, ?, ?, 1)  
                 """,
-                (name, code, quantity, threshold, image_path, notes),
+                (name, code, quantity, threshold, image_path, full_notes),
             )
 
-            # Clear form
+            # Clear form but keep category selected
             self.name_entry.delete(0, "end")
-            self.code_entry.delete(0, "end")
             self.quantity_entry.delete(0, "end")
             self.quantity_entry.insert(0, "0")
             self.threshold_entry.delete(0, "end")
@@ -292,20 +291,205 @@ class SpareManagement:
             self.image_label.configure(text="📷 No image selected", text_color="gray")
             self.current_image_path = None
 
+            # Generate next code automatically
+            self._generate_code_from_category()
+
             # Show success message
             MessageDialog.show_success(
                 self.main_frame,
                 "Success",
-                f"Spare '{name}' added successfully!\n\nCode: {code}\nQuantity: {quantity}",
+                f"Spare '{name}' added successfully!\n\n"
+                f"Category: {category}\n"
+                f"Code: {code}\n"
+                f"Quantity: {quantity}",
             )
+
+            # FIX 2: Switch back to View Spares tab
+            self.tabview.set("View Spares")
 
             # Refresh spares list
             self._load_spares()
+
+            # Clear search entry if it has any text
+            if hasattr(self, "search_entry"):
+                self.search_entry.delete(0, "end")
 
         except Exception as e:
             MessageDialog.show_error(
                 self.main_frame, "Database Error", f"Failed to add spare:\n{str(e)}"
             )
+
+    def _search_spares(self):
+        """Search spares by name or code"""
+        search_term = self.search_entry.get().strip().lower()
+
+        if not search_term:
+            self._load_spares()
+            return
+
+        try:
+            # Clear current table
+            for widget in self.spares_table_frame.winfo_children():
+                widget.destroy()
+
+            from logic.db import db
+
+            # Search in database
+            spares = db.execute(
+                """
+                SELECT id, name, code, quantity, low_stock_threshold, notes 
+                FROM spares 
+                WHERE is_active = 1 
+                AND (LOWER(name) LIKE ? OR LOWER(code) LIKE ?)
+                ORDER BY name
+                """,
+                (f"%{search_term}%", f"%{search_term}%"),
+                fetch=True,
+            )
+
+            if not spares:
+                # Show no results message
+                no_results_frame = ctk.CTkFrame(
+                    self.spares_table_frame, fg_color="transparent"
+                )
+                no_results_frame.pack(pady=50, expand=True)
+
+                ctk.CTkLabel(
+                    no_results_frame,
+                    text=f"🔍 No spares found for '{search_term}'",
+                    font=("Arial", 16),
+                    text_color="gray",
+                ).pack()
+
+                ctk.CTkButton(
+                    no_results_frame,
+                    text="🔄 Clear Search",
+                    width=150,
+                    height=35,
+                    font=("Arial", 12),
+                    command=self._clear_search,
+                ).pack(pady=10)
+                return
+
+            # Define column widths (same as main view)
+            col_widths = [50, 200, 100, 80, 100, 100]
+
+            # Create header row
+            headers = ["ID", "Name", "Code", "Qty", "Threshold", "Status"]
+            for col, (header, width) in enumerate(zip(headers, col_widths)):
+                header_label = ctk.CTkLabel(
+                    self.spares_table_frame,
+                    text=header,
+                    font=("Arial", 12, "bold"),
+                    width=width,
+                    anchor="w",
+                    fg_color="#2b2b2b",
+                    corner_radius=4,
+                )
+                header_label.grid(row=0, column=col, padx=2, pady=(0, 10), sticky="w")
+
+            # Add search results (MAKE THEM CLICKABLE)
+            for row, spare in enumerate(spares, start=1):
+                # Determine status
+                quantity = spare["quantity"]
+                threshold = spare["low_stock_threshold"]
+
+                if quantity == 0:
+                    status = "❌ Out of Stock"
+                    status_color = "#F44336"
+                elif quantity <= threshold:
+                    status = "⚠️ Low Stock"
+                    status_color = "#FF9800"
+                else:
+                    status = "✅ In Stock"
+                    status_color = "#4CAF50"
+
+                # Alternate row colors
+                row_bg = "#1a1a1a" if row % 2 == 0 else "#2b2b2b"
+
+                data = [
+                    str(spare["id"]),
+                    spare["name"][:30] + ("..." if len(spare["name"]) > 30 else ""),
+                    spare["code"],
+                    str(spare["quantity"]),
+                    str(spare["low_stock_threshold"]),
+                    status,
+                ]
+
+                # Create CLICKABLE labels for each column
+                for col, (value, width) in enumerate(zip(data, col_widths)):
+                    label = ctk.CTkLabel(
+                        self.spares_table_frame,
+                        text=value,
+                        font=("Arial", 11),
+                        width=width,
+                        height=32,
+                        anchor="w",
+                        text_color=status_color if col == 5 else "white",
+                        fg_color=row_bg,
+                        corner_radius=0,
+                        cursor="hand2",
+                    )
+                    label.grid(row=row, column=col, padx=2, pady=1, sticky="w")
+
+                    # Make it clickable
+                    label.bind(
+                        "<Button-1>", lambda e, s=spare: self._open_edit_dialog(s)
+                    )
+
+                    # Hover effect
+                    def on_enter(e, lbl=label, bg=row_bg):
+                        lbl.configure(fg_color="#3a3a3a")
+
+                    def on_leave(e, lbl=label, bg=row_bg):
+                        lbl.configure(fg_color=bg)
+
+                    label.bind("<Enter>", on_enter)
+                    label.bind("<Leave>", on_leave)
+
+            # Configure grid columns
+            for col, width in enumerate(col_widths):
+                self.spares_table_frame.grid_columnconfigure(
+                    col, minsize=width, weight=0
+                )
+
+            # Add search result count and clear button
+            result_frame = ctk.CTkFrame(self.spares_table_frame, fg_color="transparent")
+            result_frame.grid(
+                row=len(spares) + 1, column=0, columnspan=6, pady=(15, 5), sticky="ew"
+            )
+
+            ctk.CTkLabel(
+                result_frame,
+                text=f"Found {len(spares)} result(s) for '{search_term}'",
+                font=("Arial", 11),
+                text_color="#888888",
+            ).pack(side="left", padx=5)
+
+            ctk.CTkButton(
+                result_frame,
+                text="✖ Clear Search",
+                width=100,
+                height=25,
+                font=("Arial", 10),
+                fg_color="gray",
+                command=self._clear_search,
+            ).pack(side="right", padx=5)
+
+        except Exception as e:
+            print(f"Error searching spares: {e}")
+            MessageDialog.show_error(
+                self.main_frame, "Search Error", f"Failed to search: {str(e)}"
+            )
+
+    def _clear_search(self):
+        """Clear search and return to full spare list"""
+        # Clear the search entry
+        if hasattr(self, "search_entry"):
+            self.search_entry.delete(0, "end")
+
+        # Reload all spares
+        self._load_spares()
 
     def _load_spares(self):
         """Load and display spares from database"""
@@ -441,7 +625,7 @@ class SpareManagement:
             # Add instruction label
             instruction_label = ctk.CTkLabel(
                 self.spares_table_frame,
-                text="💡 Click on any spare to edit or delete",
+                text="💡 Double-click any spare to edit or delete",
                 font=("Arial", 11),
                 text_color="#888888",
             )
@@ -571,7 +755,7 @@ class SpareManagement:
         if spare.get("notes"):
             notes_text.insert("1.0", spare["notes"])
 
-        # Buttons - NOW IN SCROLLABLE FRAME, WILL BE VISIBLE
+        # Buttons
         button_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
         button_frame.pack(pady=25)
 
@@ -684,7 +868,7 @@ class SpareManagement:
                     )
                     return
 
-            # UPDATE DATABASE - 6 placeholders, 6 parameters
+            # UPDATE DATABASE
             db.execute(
                 """
                 UPDATE spares 
@@ -697,12 +881,12 @@ class SpareManagement:
                 WHERE id = ?
                 """,
                 (
-                    new_name.strip(),  # 1. name
-                    new_code.strip(),  # 2. code
-                    quantity,  # 3. quantity
-                    threshold,  # 4. threshold
-                    notes,  # 5. notes
-                    spare_id,  # 6. id for WHERE clause
+                    new_name.strip(),
+                    new_code.strip(),
+                    quantity,
+                    threshold,
+                    notes,
+                    spare_id,
                 ),
             )
 
@@ -775,99 +959,6 @@ class SpareManagement:
             f"Are you sure you want to delete '{spare_name}'?\n\nThis action cannot be undone.",
             delete_spare,
         )
-
-    def _search_spares(self):
-        """Search spares by name or code"""
-        search_term = self.search_entry.get().strip().lower()
-
-        if not search_term:
-            self._load_spares()
-            return
-
-        try:
-            # Clear current table
-            for widget in self.spares_table_frame.winfo_children():
-                widget.destroy()
-
-            from logic.db import db
-
-            # Search in database
-            spares = db.execute(
-                """
-                SELECT id, name, code, quantity, low_stock_threshold 
-                FROM spares 
-                WHERE is_active = 1 
-                AND (LOWER(name) LIKE ? OR LOWER(code) LIKE ?)
-                ORDER BY name
-                """,
-                (f"%{search_term}%", f"%{search_term}%"),
-                fetch=True,
-            )
-
-            if not spares:
-                ctk.CTkLabel(
-                    self.spares_table_frame,
-                    text=f"No spares found for '{search_term}'",
-                    font=("Arial", 14),
-                    text_color="gray",
-                ).pack(pady=50)
-                return
-
-            # Create table headers
-            headers = ["ID", "Name", "Code", "Quantity", "Low Stock", "Status"]
-            for col, header in enumerate(headers):
-                label = ctk.CTkLabel(
-                    self.spares_table_frame,
-                    text=header,
-                    font=("Arial", 12, "bold"),
-                    width=100 if col < 2 else 80,
-                )
-                label.grid(row=0, column=col, padx=5, pady=10, sticky="w")
-
-            # Add search results
-            for row, spare in enumerate(spares, start=1):
-                quantity = spare["quantity"]
-                threshold = spare["low_stock_threshold"]
-
-                if quantity == 0:
-                    status = "❌ Out of Stock"
-                    status_color = "red"
-                elif quantity <= threshold:
-                    status = "⚠️ Low Stock"
-                    status_color = "orange"
-                else:
-                    status = "✅ In Stock"
-                    status_color = "green"
-
-                data = [
-                    spare["id"],
-                    spare["name"][:20] + ("..." if len(spare["name"]) > 20 else ""),
-                    spare["code"],
-                    str(spare["quantity"]),
-                    str(spare["low_stock_threshold"]),
-                    status,
-                ]
-
-                for col, value in enumerate(data):
-                    label = ctk.CTkLabel(
-                        self.spares_table_frame,
-                        text=value,
-                        font=("Arial", 11),
-                        width=100 if col < 2 else 80,
-                        text_color=status_color if col == 5 else "white",
-                    )
-                    label.grid(row=row, column=col, padx=5, pady=5, sticky="w")
-
-        except Exception as e:
-            print(f"Error searching spares: {e}")
-
-    def _show_message(self, title, message, msg_type="info"):
-        """Show message dialog"""
-        # For now, just print to console
-        print(f"{title}: {message}")
-
-        # In future, implement proper message box
-        # You can use: CTkMessagebox or create custom dialog
 
     def destroy(self):
         """Clean up"""
